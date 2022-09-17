@@ -24,8 +24,6 @@ let order_index = 0;
 let user_index = 0;
 let product_index = 0;
 let transaction_index;
-let Inventory = require("../../api/inventory");
-
 let host = 'localhost';
 const QRCode = require('qrcode');
 let path = require('path');
@@ -44,7 +42,6 @@ let jsPDF = require('jspdf');
 let html2canvas = require('html2canvas');
 let JsBarcode = require('jsbarcode');
 let macaddress = require('macaddress');
-const { forEach } = require("async");
 let categories = [];
 let holdOrderList = [];
 let customerOrderList = [];
@@ -66,7 +63,6 @@ let end_date = moment(end).toDate();
 let by_till = 0;
 let by_user = 0;
 let by_status = 1;
-let by_category = 0;
 
 $(function () {
 
@@ -207,11 +203,10 @@ if (auth == undefined) {
         function loadProducts() {
 
             $.get(api + 'inventory/products', function (data) {
-                console.log('this are all the products in the system'+ JSON.stringify(data));
+
                 data.forEach(item => {
                 let  price = parseFloat(item.price);
                      item.price = numberWithCommas(price);
-                     category = item.category;
                 });
 
                 allProducts = [...data];
@@ -259,10 +254,8 @@ if (auth == undefined) {
                 allCategories = data;
                 loadCategoryList();
                 $('#category').html(`<option value="0">Select</option>`);
-                $('#categorieSearch').html(`<option value="0">Select</option>`);
                 allCategories.forEach(category => {
                     $('#category').append(`<option value="${category._id}">${category.name}</option>`);
-                    $('#categorieSearch').append(`<option value="${category._id}">${category.name}</option>`);
                 });
             });
         }
@@ -292,7 +285,6 @@ if (auth == undefined) {
             if (stock == 1) {
                 if (count > 0) {
                     $.get(api + 'inventory/product/' + id, function (data) {
-                        console.log('this is the product data'+ JSON.stringify(data));
                         $(this).addProductToCart(data);
                     });
                 }
@@ -406,11 +398,9 @@ if (auth == undefined) {
 
 
         $.fn.addProductToCart = function (data) {
-            
             item = {
                 id: data._id,
                 itemId: 0,
-                category: data.category,
                 discount: 0,
                 itemName: data.name,
                 sku: data.sku,
@@ -447,13 +437,11 @@ if (auth == undefined) {
         $.fn.calculateCart = function () {
             let total = 0;
             let grossTotal;
-            let vatExclusive = 0;
             $('#total').text(cart.length);
             $.each(cart, function (index, data) {
                 total += data.quantity * data.price;
             });
             total = total - $("#inputDiscount").val();
-            
             $('#price').text(settings.symbol + " " + numberWithCommas(total));
 
             subTotal = total;
@@ -464,22 +452,16 @@ if (auth == undefined) {
 
             if (settings.charge_tax) {
                 totalVat = ((total * vat) / 100);
-                vatExclusive = total-totalVat;
-                $("#vat_amount").text(numberWithCommas(totalVat.toFixed(2)));
-              
-                grossTotal = total;
+                grossTotal = total + totalVat
             }
 
             else {
-                $("#vat_amount").text(0);
-                vatExclusive = total;
                 grossTotal = total;
-
             }
 
             orderTotal = grossTotal.toFixed(2);
-            $("#vat_exclusive").text(numberWithCommas(vatExclusive.toFixed(2)));
-            $("#gross_price").text(settings.symbol + " " + numberWithCommas(grossTotal.toFixed(2)));
+
+            $("#gross_price").text(settings.symbol + " " + numberWithCommas(grossTotal));
             $("#payablePrice").val(grossTotal);
         };
 
@@ -673,7 +655,7 @@ if (auth == undefined) {
             }
 
 
-        $.fn.submitDueOrderOnline  = async function (status) {
+        $.fn.submitDueOrderOnline  = function (status) {
             let items = "";
             let payment = 0;
 
@@ -763,7 +745,6 @@ if (auth == undefined) {
                 salesItems: cart,
             }
             console.log("customer Query"+ JSON.stringify(customerQuery));
-            
 
             $.ajax({
                 url: 'http://102.223.7.131:6060/vfms/api/sales/',
@@ -775,13 +756,14 @@ if (auth == undefined) {
                 processData: false,
                 success: async  function (responseData) {
                 
-                $("#receiptLoading").hide();
+                    $("#receiptLoading").hide();
                 
                 var json = JSON.parse(JSON.stringify(responseData));
                
                  console.log("This is returned response"+ json);
-                  await generateQR("https://portalvfms.zanrevenue.org/receipt-form/"+json.receiptNumber.toString());
+                  await generateQR(json.receiptNumber.toString());
                   await $.fn.receiptAndSave(json);
+
                 },error: function (responseData) {
                     $("#receiptLoading").hide();
                     $("#dueModal").modal('toggle');
@@ -792,13 +774,12 @@ if (auth == undefined) {
             });
         
     
-            $.fn.receiptAndSave =  function(json){
+            $.fn.receiptAndSave = function(json){
                 let date = json.issueDate; 
                 let paidZRB = json.receitpAmount;
                 let currentTime = json.issueDate;
                 let customer = json.salesCustomer;
                 let refNumber = json.referenceNumber;
-                let receiptNumber = json.receiptNumber;
 
                 let data = {
                     order: "ZRBT"+orderNumber,
@@ -915,7 +896,7 @@ if (auth == undefined) {
                             }
     
     
-                console.log('this is data returned after save'+ JSON.stringify(data));
+    
                 $.ajax({
                     url: api + 'new',
                     type: method,
@@ -938,7 +919,6 @@ if (auth == undefined) {
                         $(this).getHoldOrders();
                         $(this).getCustomerOrders();
                         $(this).renderTable(cart);
-                        
                         console.log('product data successfully saved');
                     }, error: function (data) {
                         console.log('product data not saved');
@@ -952,8 +932,10 @@ if (auth == undefined) {
                 $("#refNumber").val('');
                 $("#change").text('');
                 $("#payment").val('');
+
             }
-           
+
+
         }
 
 
@@ -979,7 +961,6 @@ if (auth == undefined) {
             let orderNumber = holdOrder;
             let type = "";
             let tax_row = "";
-            let network_status = "success";
 
 
             switch (paymentType) {
@@ -1102,7 +1083,7 @@ if (auth == undefined) {
                 <td><h3>Total</h3></td>
                 <td><h3>:</h3></td>
                 <td>
-                    <h3>${settings.symbol} ${" " +numberWithCommas(parseFloat(orderTotal).toFixed(2))}</h3>
+                    <h3>${settings.symbol}${" " +numberWithCommas(parseFloat(orderTotal).toFixed(2))}</h3>
                 </td>
             </tr>
             ${payment == 0 ? '' : payment}
@@ -1112,7 +1093,7 @@ if (auth == undefined) {
             <hr>
             <br>
             <p style="text-align: center;">
-                <img src = 'assets/images/qrcodeImage.png'/>
+             ${settings.footer}
              </p>
             </div>`;
 
@@ -1149,15 +1130,13 @@ if (auth == undefined) {
                 total: orderTotal,
                 paid: paid,
                 change: change,
-                _id: "ZRBT"+orderNumber,
+                _id: "ZRB"+orderNumber,
                 till: platform.till,
                 mac: platform.mac,
                 user: user.fullname,
-                user_id: user._id,
-                flag: network_status,
+                user_id: user._id
             }
-            console.log('this is data returned after save'+ JSON.stringify(data));
-            let offlineOrderNumber = "ZRBT"+orderNumber;
+
             $.ajax({
                 url: api + 'new',
                 type: method,
@@ -1165,13 +1144,11 @@ if (auth == undefined) {
                 contentType: 'application/json; charset=utf-8',
                 cache: false,
                 processData: false,
-                success: async function (data, offlineOrderNumber) {
-                   
-                    await generateQR("https://portalvfms.zanrevenue.org/receipt-form/"+ offlineOrderNumber.toString());
-                    await $('#viewTransaction').html(receipt);
+                success: function (data) {
 
                     cart = [];
                     $('#viewTransaction').html('');
+                    $('#viewTransaction').html(receipt);
                     $('#orderModal').modal('show');
                     loadProducts();
                     loadCustomers();
@@ -1196,6 +1173,7 @@ if (auth == undefined) {
             $("#payment").val('');
 
         }
+
 
         $.get(api + 'on-hold', function (data) {
             holdOrderList = data;
@@ -1257,7 +1235,7 @@ if (auth == undefined) {
             })
 
             let vat = (totalPrice * data.vat) / 100;
-            totalPrice = ((totalPrice) - data.discount).toFixed(0);
+            totalPrice = ((totalPrice + vat) - data.discount).toFixed(0);
 
             return totalPrice;
         };
@@ -1384,19 +1362,6 @@ if (auth == undefined) {
             });
         }
 
-        
-        $.fn.deleteAllTransactions = function () {
-            $.get(api + 'deleteTransactions', function (data) {
-                console.log('all transactions data deleted');
-                console.log('operation status'+data);
-            });
-        }
-
-        $('#deleteAllTransactions').click(function () {
-
-            $.fn.deleteAllTransactions();
-        });
-
 
 
         $('#saveCustomer').on('submit', function (e) {
@@ -1454,7 +1419,7 @@ if (auth == undefined) {
                 );
             }
             else {
-                $(this).submitDueOrderOffline(1);
+                $(this).submitDueOrderOnline(1);
             }
         });
 
@@ -1766,6 +1731,7 @@ if (auth == undefined) {
                 }
             });
         }
+
 
         $('#productModal').click(function () {
             loadProductList();
@@ -2322,9 +2288,9 @@ function loadTransactions() {
                 transaction_list += `<tr>
                                 <td>${trans.order}</td>
                                 <td class="nobr">${moment(trans.date).format('YYYY MMM DD hh:mm:ss')}</td>
-                                <td>${numberWithCommas(trans.total)}</td>
-                                <td>${trans.paid == "" ? "" : numberWithCommas(trans.paid)}</td>
-                                <td>${trans.change ? numberWithCommas(Math.abs(trans.change).toFixed(2)) : ''}</td>
+                                <td>${settings.symbol + trans.total}</td>
+                                <td>${trans.paid == "" ? "" : settings.symbol + trans.paid}</td>
+                                <td>${trans.change ? settings.symbol + Math.abs(trans.change).toFixed(2) : ''}</td>
                                 <td>${trans.paid == "" ? "" : trans.payment_type == 0 ? "Cash" : 'Card'}</td>
                                 <td>${trans.till}</td>
                                 <td>${trans.user}</td>
@@ -2333,17 +2299,14 @@ function loadTransactions() {
 
                 if (counter == transactions.length) {
 
-                    $('#total_sales_1 #counter').text(numberWithCommas(parseFloat(sales).toFixed(2)));
-                    $('#total_transactions_1 #counter').text(transact);
-                    $('#total_tax_payable #counter').text(numberWithCommas(parseFloat(sales*0.15).toFixed(2)));
-                    $('#trans_currency').text(settings.symbol);
-                    
+                    $('#total_sales #counter').text(settings.symbol + parseFloat(sales).toFixed(2));
+                    $('#total_transactions #counter').text(transact);
 
                     const result = {};
 
-                    for (const { itemName, price, quantity, id, category } of sold_items) {
+                    for (const { itemName, price, quantity, id } of sold_items) {
                         if (!result[itemName]) result[itemName] = [];
-                        result[itemName].push({ id, price, quantity, category });
+                        result[itemName].push({ id, price, quantity });
                     }
 
                     for (item in result) {
@@ -2351,21 +2314,18 @@ function loadTransactions() {
                         let price = 0;
                         let quantity = 0;
                         let id = 0;
-                        let category = "";
 
                         result[item].forEach(i => {
                             id = i.id;
                             price = i.price;
                             quantity += i.quantity;
-                            category = i.category;
                         });
 
                         sold.push({
                             id: id,
                             product: item,
                             qty: quantity,
-                            price: price,
-                            category: category,
+                            price: price
                         });
                     }
 
@@ -2423,13 +2383,8 @@ function loadSoldProducts() {
 
     let counter = 0;
     let sold_list = '';
-    let categories_sales_list='';
     let items = 0;
     let products = 0;
-    let soldCategories = [];
-    let soldCategoryList = [];
- 
-    
     $('#product_sales').empty();
 
     sold.forEach((item, index) => {
@@ -2441,110 +2396,23 @@ function loadSoldProducts() {
             return selected._id == item.id;
         });
 
-        let category = allCategories.filter(function (category) {
-            return category._id == item.category;
-        });
-
-        console.log('these are categories '+ category[0].name);
-  
-        if(soldCategories.indexOf(category[0].name)==-1){
-            soldCategories.push(category[0].name);
-        }
-                
         counter++;
 
         sold_list += `<tr>
             <td>${item.product}</td>
             <td>${item.qty}</td>
             <td>${product[0].stock == 1 ? product.length > 0 ? product[0].quantity : '' : 'N/A'}</td>
-            <td>${category[0].name}</td>
             <td>${settings.symbol + " " + numberWithCommas((item.qty * parseFloat(item.price)).toFixed(2))}</td>
             </tr>`;
 
         if (counter == sold.length) {
-            $('#total_items_1 #counter').text(items);
-            $('#total_products_1 #counter').text(products);
+            $('#total_items #counter').text(items);
+            $('#total_products #counter').text(products);
             $('#product_sales').html(sold_list);
         }
     });
-
-    soldCategories.forEach((soldCategory, index)=>{
-       let soldItems = 0;
-       let counter1 = 0;
-       let categoryCount = 0;
-       let categorySales =0;
-    sold.forEach((item, index) => {
-
-         soldItems += item.qty;
-
-        let category = allCategories.filter(function (category) {
-            return category._id == item.category;
-        });
-
-        if(category[0].name==soldCategory){
-        console.log('this is sold category' + soldCategory + 'and this is item category'+category[0].name);
-            categoryCount += soldItems;
-            categorySales += item.qty * parseFloat(item.price)
-        }
-        soldItems =0;
-        counter1++;
-    });
-
-    let soldCategoryItem = {
-        soldCategoryName: soldCategory,
-        soldCategoryCount: categoryCount,
-        soldCategorySales: categorySales
-    }
-
-    soldCategoryList.push(soldCategoryItem);
-
-
-
-    if(counter1 == sold.length){
-        
-        categories_sales_list += `<tr>
-        <td>${soldCategoryList[index].soldCategoryName}</td>
-        <td>${soldCategoryList[index].soldCategoryCount}</td>
-        <td>${numberWithCommas(soldCategoryList[index].soldCategorySales)}</td>
-        </tr>`;
-
-     }
-
-     $('#categories_sales_list').html(categories_sales_list);
-    });
-
-    
 }
 
-
-function loadSoldCategoryList() {
-
-    let category_list = '';
-    let counter = 0;
-  
-    allCategories.forEach((category, index) => {
-
-        counter++;
-
-        category_list += `<tr>
-
-    <td>${category.name}</td>
-    <td><span class="btn-group"><button onClick="$(this).editCategory(${index})" class="btn btn-warning"><i class="fa fa-edit"></i></button><button onClick="$(this).deleteCategory(${category._id})" class="btn btn-danger"><i class="fa fa-trash"></i></button></span></td></tr>`;
-    });
-
-    if (counter == allCategories.length) {
-
-        $('#category_list').html(category_list);
-        $('#categoryList').DataTable({
-            "autoWidth": false
-            , "info": true
-            , "JQueryUI": true
-            , "ordering": true
-            , "paging": false
-
-        });
-    }
-}
 
 function userFilter(users) {
 
@@ -2809,7 +2677,6 @@ $('#quit').click(function () {
 function numberWithCommas(x) {
     return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
-
 
 
 

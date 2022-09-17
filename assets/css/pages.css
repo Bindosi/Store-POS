@@ -60,7 +60,7 @@ color: #FFFFFF;
 margin-right: 30px;
 }
 
-#product_name {
+#itemName {
   height: 40px;
   overflow: hidden;
   border-bottom: 1px solid #f1f1f1;
@@ -200,7 +200,7 @@ margin-right: 30px;
   height: 120px;
   border: 1px solid #fff;
   border-radius: 5px;
-  margin-bottom: 20px;
+  margin-bottom: 15px;
 }
 
 #total_transactions { 
@@ -239,6 +239,6 @@ margin-right: 30px;
 #counter {
   text-align: center !important;
   margin-top: 10px;
-  font-size: 32px;
-  width: 100%;
+  font-size: 24px;
+  width: 90%;
 }

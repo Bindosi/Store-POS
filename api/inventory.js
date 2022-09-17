@@ -34,6 +34,7 @@ inventoryDB.ensureIndex({ fieldName: '_id', unique: true });
 
  
 app.get( "/", function ( req, res ) {
+
     res.send( "Inventory API" );
 } );
 
@@ -53,7 +54,7 @@ app.get( "/product/:productId", function ( req, res ) {
 
 
  
-app.get( "/products", function ( req, res ) {
+app.get( "/products", function ( req, res ) {    
     inventoryDB.find( {}, function ( err, docs ) {
         res.send( docs );
     } );
@@ -90,6 +91,8 @@ app.post( "/product", upload.single('imagename'), function ( req, res ) {
     let Product = {
         _id: parseInt(req.body.id),
         price: req.body.price,
+        itemId: req.body.itemId ==""? 0: req.body.itemId,
+        discount: req.body.discount==""? 0: req.body.discount,
         category: req.body.category,
         quantity: req.body.quantity == "" ? 0 : req.body.quantity,
         name: req.body.name,
@@ -106,6 +109,7 @@ app.post( "/product", upload.single('imagename'), function ( req, res ) {
     }
     else { 
         inventoryDB.update( {
+
             _id: parseInt(req.body.id)
         }, Product, {}, function (
             err,

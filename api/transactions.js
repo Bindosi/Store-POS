@@ -3,6 +3,7 @@ let server = require("http").Server(app);
 let bodyParser = require("body-parser");
 let Datastore = require("nedb");
 let Inventory = require("./inventory");
+let Swal = require('sweetalert2');
 
 app.use(bodyParser.json());
 
@@ -27,6 +28,12 @@ app.get("/all", function(req, res) {
   });
 });
 
+app.get( "/deleteTransactions", function ( req, res ) {
+  transactionsDB.remove( { },{ multi: true }, function ( err, numRemoved ) {
+      if ( err ) res.status( 500 ).send( err );
+      else res.sendStatus( 200 );
+  } );
+} );
 
 
  
@@ -99,6 +106,7 @@ app.get("/by-date", function(req, res) {
 
 app.post("/new", function(req, res) {
   let newTransaction = req.body;
+  //transactionsDB.remove({}, {},); this removes everythiing
   transactionsDB.insert(newTransaction, function(err, transaction) {    
     if (err) res.status(500).send(err);
     else {
@@ -106,6 +114,7 @@ app.post("/new", function(req, res) {
 
      if(newTransaction.paid >= newTransaction.total){
         Inventory.decrementInventory(newTransaction.items);
+        
      }
      
     }

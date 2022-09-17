@@ -68,15 +68,6 @@
                             <span class="btn-label"><i class=" 	glyphicon glyphicon-credit-card"></i> </span>  Transactions 
                             </button>
 
-                           
-                            <button id="deleteAllTransactions" type="button" class="btn btn-default waves-effect waves-light p_three">
-                          
-                            <span class="btn-label"><i class=" 	glyphicon glyphicon-trash"></i> </span>Delete All
-                            </button>
-                               
-                                
-                    
-
                             <button id="pointofsale" type="button" class="btn btn-default waves-effect waves-light">
                                 <span class="btn-label"><i class=" 	glyphicon glyphicon-shopping-cart"></i> </span>  Point of Sale
                             </button>
@@ -115,15 +106,7 @@
             <div class="col-md-12">
                 <div class="card-box"> 
                     <div class="row">               
-                        <h3 class="col-md-2">Transactions <span style = "color: white; background-color: red;" id = "total_transactions"></span></h3> 
-                        <br><h5>All currencies in (<span id = "trans_currency"></span>)</h5></br>
-                    
-                    <div class = "col-md-2">
-                        <span>Category</span>
-                            <select id="categorieSearch" class="form-control">                              
-                        </select>
-                    </div>
-
+                        <h3 class="col-md-2">Transactions</h3> 
                         <div class="col-md-1">
                             <span>Till</span>
                             <select id="tills" class="form-control">                              
@@ -134,7 +117,6 @@
                             <select id="users" class="form-control">
                             </select>
                         </div>
-                        
                         <div class="col-md-1">
                             <span>Status</span>
                             <select id="status" class="form-control status">
@@ -151,55 +133,67 @@
                         </div>
                     </div>   
                         <hr>
-                        
                         <div class="row">
-                                                     
-                                    <div class="col-md-2" id="totals">
+                           
+
+                            <div class="col-md-5">
+                                <div class="row">
+                                    <div class="col-md-8" id="productSales">
+                                            <h4>Products</h4>
+                                            <hr>
+                                            <table class="table tablesaw-enhanced" id="productsSold">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Name</th>
+                                                        <th>Sold</th>
+                                                        <th>Available</th> 
+                                                        <th>Sales</th>                                                                                                           
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="product_sales"></tbody>
+                                            </table>
+                                    </div>
+                                    <div class="col-md-4" id="totals">
                                             <h4>Total</h4>
                                             <hr>
                                     
-                                            <div id="total_sales_1" class="btn-success">
+                                            <div id="total_sales" class="btn-success">
                                                 <h5>SALES</h5>
                                                 <div id="counter">0</div>
-                                            </div><br>
+                                            </div>
                                        
-                                            <div id="total_transactions_1" class="btn-warning">
+                                            <div id="total_transactions" class="btn-warning">
                                                 <h5>TRANSACTIONS</h5>
                                                 <div id="counter">0</div>
-                                            </div><br>
-
-                                            <div id="total_tax_payable"  style ="background-color: red; color:aliceblue" >
-                                                <h5>TAX PAYABLE</h5>
-                                                <div id="counter">0</div>
-                                            </div><br>
-                                            
-                                            <div id="total_items_1" class="btn-info">
+                                            </div>
+                                
+                                            <div id="total_items" class="btn-info">
                                                 <h5>ITEMS</h5>
                                                 <div id="counter">0</div>
-                                            </div><br>
+                                            </div>
 
-                                            <div id="total_products_1" class="btn-default">
+                                            <div id="total_products" class="btn-default">
                                                 <h5>PRODUCTS</h5>
                                                 <div id="counter">0</div>
-                                            </div><br>
-
-                                           
+                                            </div>
                                                                          
                                     </div>
+                                   
+                               </div>
+                           </div>
 
-                           <div class="col-md-10">
+                           <div class="col-md-7">
                             <table class="table tablesaw-enhanced" id="transactionList">
                                 <thead>
                                     <tr>                                                                      
                                         <th>Invoice</th>                                      
                                         <th>Date</th>
-                                        <th>Total </th>
-                                        <th>Paid </th>
-                                        <th>Change </th>
+                                        <th>Total</th>
+                                        <th>Paid</th>
+                                        <th>Change</th>
                                         <th>Method</th>
                                         <th>Till</th>
                                         <th>Cashier</th>
-                                        <th>Status</th>
                                         <th>View</th>
                                     </tr>
                                 </thead>
@@ -207,50 +201,12 @@
                             </table>
                         </div>
 
-                      </div>  
-                        
-                        <hr>
-                      <div class = "row">
-                            <div class="col-md-12" id="productSales">
-                                <h4>Products Sales Summary</h4>
-                                <hr>
-                                <table class="table tablesaw-enhanced" id="productsSold">
-                                    <thead>
-                                        <tr>
-                                            <th>Name</th>
-                                            <th>Sold</th>
-                                            <th>Available</th> 
-                                            <th>Category</th> 
-                                            <th>Sales</th>                                                                                                           
-                                        </tr>
-                                    </thead>
-                                    <tbody id="product_sales"></tbody>
-                                </table>
-                            </div>
-                    </div>  
-                    <hr>
-                    <div class = "row">
-                          <div class="col-md-12" id="sold_category_list">
-                              <h4>Category Sales Summary</h4>
-                              <hr>
-                              <table class="table tablesaw-enhanced" id="productsSold">
-                                  <thead>
-                                      <tr>
-                                          <th>Name</th>
-                                          <th>Sold</th>
-                                          <th>Sales</th>                                                                                                           
-                                      </tr>
-                                  </thead>
-                                  <tbody id="categories_sales_list"></tbody>
-                              </table>
-                          </div>
-                  </div>                 
+                      </div>                    
                 </div>
             </div>
         </div>
    </div>
 
-   
 
    <div id="pos_view">
       <div class="row">
@@ -322,27 +278,21 @@
                      <div class="row">
                          <div class="col-md-3">Total Item(s)</div>
                          <div class="col-md-3">: <sapn id="total">0</sapn></div>
-                         <div class="col-md-3"><b><h4>Vat Exlusive </b></h4></div>
-                         <div class="col-md-3"><h4 id="vat_exclusive">0.00</h4></div>
+                         <div class="col-md-3">Price :</div>
+                         <div class="col-md-3">: <span id="price">0.0</span></div>
                      </div>
-                       <div class="row">
-                        <div class="col-md-3">Discount</div>
-                        <div class="col-md-3"><input class="form-control" type="number" id="inputDiscount" oninput="$(this).calculateCart();"></div>
-                        <div class="col-md-3"><b><h4>Vat (<span id="taxInfo"></span>% Tax)</b></h4></div>
-                        <div class="col-md-3"><h4 id="vat_amount"> 0.00</h4></div>
-                    </div>
                      <div class="row">
-                         <div class="col-md-6 text-align-right"></div>
-                         <div class="col-md-3"><b><h3>Total (inc <span id="taxInfo"></span>% Tax) </h3></b></div>
-                         <div class="col-md-3"><b><h3 id="gross_price">0.00</h3></b></div>
+                         <div class="col-md-3">Discount</div>
+                         <div class="col-md-3"><input class="form-control" type="number" id="inputDiscount" oninput="$(this).calculateCart();"></div>
+                         <div class="col-md-3">Gross Price (inc <span id="taxInfo"></span>% Tax)</div>
+                         <div class="col-md-3"><h3 id="gross_price">0.00</h3></div>
                      </div>
-                   
   
                  </div>
   
                   <div class="button-list pull-right">
 
-                    <button onclick="$(this).submitDueOrderOffline(3);" type="button" class="btn btn-info waves-effect waves-light">
+                    <button onclick="$(this).submitDueOrder(3);" type="button" class="btn btn-info waves-effect waves-light">
                         <i class="fa fa-print"></i> 
                     </button>
 
@@ -428,7 +378,7 @@
                   </div>
               </div>
               <div class="modal-footer">
-                  <button type="button" onclick="$(this).submitDueOrderOffline(0);" class="btn btn-primary btn-block btn-lg waves-effect waves-light">Hold Order</button>
+                  <button type="button" onclick="$(this).submitDueOrder(0);" class="btn btn-primary btn-block btn-lg waves-effect waves-light">Hold Order</button>
               </div>
   
           </div><!-- /.modal-content -->
@@ -538,7 +488,7 @@
                             <input type="text" class="form-control" id="paymentInfo" aria-describedby="basic-addon3">
                         </div>
                     </div>
-                </div><var></var>
+                </div>
             </div>
             <div class="modal-footer">
                 <div class="row">
@@ -892,14 +842,14 @@
                     <div class="modal-body">  
                         
                         
-                    <div class="form-group">
+                        <div class="form-group">
                         <label for="app">Application</label>
                         <select name="app" id="app" class="form-control">
                             <option>Standalone Point of Sale</option>
                             <option>Network Point of Sale Terminal</option>
                             <option>Network Point of Sale Server</option>                                            
                         </select>
-                    </div>
+                 </div>
 
                 <form id="net_settings_form">
                  <div class="row">
@@ -947,30 +897,21 @@
                                         <input type="text" required="required"  name="address_one" class="form-control" id="address_one">
                                  </div>
                                  <div class="form-group">
+                                        <label for="userName">Address Line 2</label>
+                                        <input type="text" required="required"  name="address_two" class="form-control" id="address_two">
+                                 </div>
+                                 <div class="form-group">
                                         <label for="userName">Contact Number</label>
                                         <input type="text" name="contact" class="form-control" id="contact">
                                  </div>
                                  <div class="form-group">
-                                    <label for="userName">VMS token ID* </label>
-                                    <input type="text" required="required" name="vfms_token_id" parsley-trigger="change" class="form-control" id="vfms_token_id">
-                                </div>
-                                <div class="form-group">
-                                    <label for="userName">VMS integration ID* </label>
-                                    <input type="text" required="required" name="vfms_intergration_id" parsley-trigger="change" class="form-control" id="vfms_intergration_id">
-                                </div>
-                                <div class="form-group">
-                                    <label for="app">Sales Type*</label>
-                                        <select name="vfms_request_type" id="vfms_request_type" class="form-control">
-                                            <option>Normal Sales</option>
-                                                                                       
-                                        </select>
-                                </div>
+                                        <label for="userName">Vat Number</label>
+                                        <input type="text" name="tax" parsley-trigger="change" class="form-control" id="tax">
+                                 </div>
+                              
+
                             </div>
                             <div class="col-md-6">
-                                <div class="form-group">
-                                    <label for="userName">Vat Number</label>
-                                    <input type="text" name="tax" parsley-trigger="change" class="form-control" id="tax">
-                             </div>
                                     <div class="form-group">
                                             <label for="userName">Currency Symbol</label>
                                             <input type="text" required="required"  name="symbol" class="form-control" id="symbol">
@@ -988,7 +929,7 @@
                                         <label><input type="checkbox" name="charge_tax" id="charge_tax"> Charge Vat</label>
                                      </div>
                                      <div class="form-group">       
-                                        <label for="userName"><span id="rmv_logo" class="btn btn-xs btn-warning">Remove</span>Shop/Company Logo </label>              
+                                        <label for="userName"><span id="rmv_logo" class="btn btn-xs btn-warning">Remove</span> Logo </label>              
                                         <div id="current_logo"></div>                                        
                                        
                                         <input type="file" name="imagename" id="logoname">                            
