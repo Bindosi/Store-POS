@@ -23,6 +23,7 @@
     "html2canvas": "^1.0.0-rc.5",
     "http": "0.0.0",
     "https": "^1.0.0",
+    "internet-available": "^1.0.0",
     "is-port-reachable": "^2.0.1",
     "jquery": "^3.4.1",
     "jsbarcode": "^3.11.0",
@@ -74,16 +75,15 @@
     "forge": {
       "packagerConfig": {},
       "makers": [
-        
-          {
-            "name": "@electron-forge/maker-squirrel",
-            "config": {
-              "certificateFile": "./cert.pfx",
-              "certificatePassword": "this-is-a-secret",
-              "name": "POS"
-            }
-          },
-                  {
+        {
+          "name": "@electron-forge/maker-squirrel",
+          "config": {
+            "certificateFile": "./cert.pfx",
+            "certificatePassword": "this-is-a-secret",
+            "name": "POS"
+          }
+        },
+        {
           "name": "@electron-forge/maker-zip",
           "platforms": [
             "darwin"

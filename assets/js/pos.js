@@ -25,7 +25,6 @@ let user_index = 0;
 let product_index = 0;
 let transaction_index;
 let Inventory = require("../../api/inventory");
-
 let host = 'localhost';
 const QRCode = require('qrcode');
 let path = require('path');
@@ -33,6 +32,7 @@ let port = '8001';
 let moment = require('moment');
 let Swal = require('sweetalert2');
 let { ipcRenderer } = require('electron');
+const  net  = require('electron');
 let dotInterval = setInterval(function () { $(".dot").text('.') }, 3000);
 let Store = require('electron-store');
 const remote = require('electron').remote;
@@ -45,6 +45,7 @@ let html2canvas = require('html2canvas');
 let JsBarcode = require('jsbarcode');
 let macaddress = require('macaddress');
 const { forEach } = require("async");
+var internetAvailable = require("internet-available");
 let categories = [];
 let holdOrderList = [];
 let customerOrderList = [];
@@ -67,6 +68,7 @@ let by_till = 0;
 let by_user = 0;
 let by_status = 1;
 let by_category = 0;
+let network_status = 'offline';
 
 $(function () {
 
@@ -97,6 +99,26 @@ $(function () {
     cb(start, end);
 
 });
+const updateOnlineStatus = () => {
+    if(navigator.onLine){
+        document.getElementById('onlineStatusIndicator').className ='btn btn-default waves-effect waves-light'
+        document.getElementById('onlineStatus').innerHTML ='Online';
+    }else {
+        document.getElementById('onlineStatusIndicator').className ='btn btn-danger waves-effect waves-light'
+        document.getElementById('onlineStatus').innerHTML ='Offline';
+        network_status = 'offline';
+    };
+}
+console.log('this is the current status of network'+ network_status);
+window.addEventListener('online', updateOnlineStatus)
+window.addEventListener('offline', updateOnlineStatus)
+
+updateOnlineStatus();
+
+
+
+
+
 
 
 $.fn.serializeObject = function () {
@@ -288,6 +310,24 @@ if (auth == undefined) {
 
 
         $.fn.addToCart = function (id, count, stock) {
+            internetAvailable().then(function(){
+                document.getElementById('onlineStatusIndicator').className ='btn btn-default waves-effect waves-light'
+                document.getElementById('onlineStatus').innerHTML ='Online';
+                network_status = 'online';
+                console.log("Internet available");
+            }).catch(function(){
+                document.getElementById('onlineStatusIndicator').className ='btn btn-danger waves-effect waves-light'
+                document.getElementById('onlineStatus').innerHTML ='Offline';
+                network_status = 'offline';
+                console.log("No internet");
+            });
+
+
+            console.log('this is the current status of network'+ network_status);
+            window.addEventListener('online', internetAvailable())
+            window.addEventListener('offline', internetAvailable())
+            
+            internetAvailable();
 
             if (stock == 1) {
                 if (count > 0) {
@@ -619,7 +659,7 @@ if (auth == undefined) {
 
 
         $("#payButton").on('click', function () {
-            if (cart.length != 0) {
+            if (cart.length != 0) {   
                 $("#paymentModel").modal('toggle');
             } else {
                 Swal.fire(
@@ -695,6 +735,7 @@ if (auth == undefined) {
             let orderNumber = holdOrder;
             let type = "";
             let tax_row = "";
+            let network_status = "Connected";
           
             switch (paymentType) {
 
@@ -764,10 +805,11 @@ if (auth == undefined) {
             }
             console.log("customer Query"+ JSON.stringify(customerQuery));
             
-
+            let headerString = {'Content-Type': 'application/json','vfms-request-type': ''+ settings.vfms_request_type+'','vfms-intergration-id': ''+ settings.vfms_intergration_id+'','vfms-token-id': ''+ settings.vfms_token_id+''};
+            console.log('this is the headerstring'+JSON.stringify(headerString));
             $.ajax({
                 url: 'http://102.223.7.131:6060/vfms/api/sales/',
-                headers: {'Content-Type': 'application/json','vfms-request-type': 'NORMAL_SALES','vfms-intergration-id': '601850253','vfms-token-id': 'e356de19-b1e6-47d9-82e0-eff7ad5fed5c'},
+                headers: {'Content-Type': 'application/json','vfms-request-type': ''+ settings.vfms_request_type+'','vfms-intergration-id': ''+ settings.vfms_intergration_id+'','vfms-token-id': ''+ settings.vfms_token_id+''},
                 type: 'POST',
                 data: JSON.stringify(customerQuery),
                 contentType: 'application/json; charset=utf-8',
@@ -778,20 +820,19 @@ if (auth == undefined) {
                 $("#receiptLoading").hide();
                 
                 var json = JSON.parse(JSON.stringify(responseData));
-               
-                 console.log("This is returned response"+ json);
+                console.log('this is the response data'+JSON.stringify(responseData));
                   await generateQR("https://portalvfms.zanrevenue.org/receipt-form/"+json.receiptNumber.toString());
                   await $.fn.receiptAndSave(json);
                 },error: function (responseData) {
                     $("#receiptLoading").hide();
                     $("#dueModal").modal('toggle');
-                    Swal.fire("Something went wrong!", 'Please refresh this page and try again');
-
+                    $.fn.submitDueOrderOffline(1);
+                    Swal.fire("Connection lost!", 'Printing receipt offline');
                 }
             
             });
         
-    
+            
             $.fn.receiptAndSave =  function(json){
                 let date = json.issueDate; 
                 let paidZRB = json.receitpAmount;
@@ -820,7 +861,8 @@ if (auth == undefined) {
                     till: platform.till,
                     mac: platform.mac,
                     user: user.fullname,
-                    user_id: user._id
+                    user_id: user._id,
+                    flag:network_status
                 }
     
           
@@ -837,7 +879,7 @@ if (auth == undefined) {
                 receipt = `<div style="font-size: 10px;">                            
                 <p style="text-align: center;">
                     ${settings.img == "" ?'<img style="max-width: 50px;max-width: 50px;" src ="assets/images/zrb_logo.png" /><br>' : '<img style="max-width: 50px;max-width: 50px;" src ="assets/images/zrb_logo.png" /><br>'}
-                        <span style="font-size: 16px;">TAX PAYER: ${json.businessName}</span> <br>
+                        <span style="font-size: 14px;">TAX PAYER: ${json.businessName}</span> <br>
                         Z NUMBER:  ${json.znumber} <br>
                         TIN:  ${json.tinNumber}<br>
                         VRN: ${json.vrnNumber} <br>
@@ -846,12 +888,13 @@ if (auth == undefined) {
                         <hr>
                         <left>
                             <p>
-                            Ref No : ${refNumber} <br>
+                            Ref No : ${receiptNumber} <br>
                             Customer Name : ${json.salesCustomer} <br>
+                            Phone Number:${phoneNumber}<br>
                             Cashier : ${user.fullname} <br>
                             Currency : ${json.salesCurrency}<br>
                             Issue Date : ${date}<br>
-                            Phone Number:${phoneNumber}
+                           
                             </p>
                         </left>
                         <hr>
@@ -867,9 +910,9 @@ if (auth == undefined) {
                             ${items}                
                     
                             <tr>                        
-                                <td><b>Total Tax Excl.</b></td>
+                                <td>Total Tax Excl.</td>
                                 <td>:</td>
-                                <td><b>${json.salesCurrency}${" "+ numberWithCommas(json.taxExclussive.toFixed(2))}</b></td>
+                                <td>${json.salesCurrency}${" "+ numberWithCommas(json.taxExclussive.toFixed(2))}</td>
                             </tr>
                             <tr>
                                 <td>Discount</td>
@@ -880,18 +923,18 @@ if (auth == undefined) {
                             ${tax_row}
                         
                             <tr>
-                                <td><h4>Total Amount: </h4></td>
-                                <td><h4>:</h4></td>
+                                <td><b>Total Amount: </b></td>
+                                <td><b>:</b></td>
                                 <td>
-                                    <h4>${settings.symbol} ${" " + numberWithCommas(parseFloat(paidZRB).toFixed(2))}</h3>
+                                  <b>${settings.symbol} ${" " + numberWithCommas(parseFloat(paidZRB).toFixed(2))}</b>
                                 </td>
                             </tr>
                             ${payment == 0 ? '' : payment}
                             </tbody>
                             </table>
-                            <br>
+                          
                             <hr>
-                            <br>
+                          
                             <p style="text-align: center;">
                             <img src = 'assets/images/qrcodeImage.png'/>
                             </p>
@@ -915,7 +958,6 @@ if (auth == undefined) {
                             }
     
     
-                console.log('this is data returned after save'+ JSON.stringify(data));
                 $.ajax({
                     url: api + 'new',
                     type: method,
@@ -976,10 +1018,12 @@ if (auth == undefined) {
             let paid = $("#payment").val() == "" ? "" : parseFloat($("#payment").val()).toFixed(2);
             let change = $("#change").text() == "" ? "" : parseFloat($("#change").text()).toFixed(2);
             let refNumber = $("#refNumber").val();
+            let salesCustomer = $("#salesCustomerName").val();
+            let phoneNumber = $("#salesCustomerPhone").val();
             let orderNumber = holdOrder;
             let type = "";
             let tax_row = "";
-            let network_status = "success";
+            let network_status = "Error";
 
 
             switch (paymentType) {
@@ -1055,23 +1099,22 @@ if (auth == undefined) {
 
         receipt = `<div style="font-size: 10px;">                            
         <p style="text-align: center;">
-        ${settings.img == "" ? settings.img : '<img style="max-width: 50px;max-width: 100px;" src ="' + img_path + settings.img + '" /><br>'}
-            <span style="font-size: 22px;">${settings.store}</span> <br>
-            ${settings.address_one} <br>
-            ${settings.address_two} <br>
-            ${settings.contact != '' ? 'Tel: ' + settings.contact + '<br>' : ''} 
-            ${settings.tax != '' ? 'Vat No: ' + settings.tax + '<br>' : ''} 
-        </p>
-        <hr>
-        <left>
-            <p>
-            Order No : ${orderNumber} <br>
-            Ref No : ${refNumber == "" ? orderNumber : refNumber} <br>
-            Customer : ${customer == 0 ? 'Walk in customer' : customer.name} <br>
-            Cashier : ${user.fullname} <br>
-            Date : ${date}<br>
+        ${settings.img == "" ?'<img style="max-width: 50px;max-width: 50px;" src ="assets/images/zrb_logo.png" /><br>' : '<img style="max-width: 50px;max-width: 50px;" src ="assets/images/zrb_logo.png" /><br>'}
+            <span style="font-size: 14px;">TAX PAYER: ${settings.store}</span> <br>
+            Z NUMBER:  ${settings.zNumber} <br>
+            TIN:  ${settings.tinNumber}<br>
+            VRN: ${settings.vrnNumber} <br>
+            STREET: ${settings.street}
             </p>
+            <hr>
+        <left>
 
+        Ref No : ${orderNumber} <br>
+        Customer Name : ${salesCustomer} <br>
+        Phone Number:${phoneNumber}<br>
+        Cashier : ${user.fullname} <br>
+        Currency : ${settings.symbol}<br>
+        Issue Date : ${date}
         </left>
         <hr>
         <table width="100%">
@@ -1099,10 +1142,10 @@ if (auth == undefined) {
             ${tax_row}
         
             <tr>
-                <td><h3>Total</h3></td>
-                <td><h3>:</h3></td>
+                <td><h5>Total</h5></td>
+                <td><h5>:</h5></td>
                 <td>
-                    <h3>${settings.symbol} ${" " +numberWithCommas(parseFloat(orderTotal).toFixed(2))}</h3>
+                    <h5>${settings.symbol} ${" " +numberWithCommas(parseFloat(orderTotal).toFixed(2))}</h5>
                 </td>
             </tr>
             ${payment == 0 ? '' : payment}
@@ -1158,20 +1201,19 @@ if (auth == undefined) {
             }
             console.log('this is data returned after save'+ JSON.stringify(data));
             let offlineOrderNumber = "ZRBT"+orderNumber;
-            $.ajax({
+                $.ajax({
                 url: api + 'new',
                 type: method,
                 data: JSON.stringify(data),
                 contentType: 'application/json; charset=utf-8',
                 cache: false,
                 processData: false,
-                success: async function (data, offlineOrderNumber) {
-                   
-                    await generateQR("https://portalvfms.zanrevenue.org/receipt-form/"+ offlineOrderNumber.toString());
-                    await $('#viewTransaction').html(receipt);
+                success:async function (data) {
 
+                    await generateQR("https://portalvfms.zanrevenue.org/receipt-form/"+ offlineOrderNumber.toString());
                     cart = [];
                     $('#viewTransaction').html('');
+                    $('#viewTransaction').html(receipt);
                     $('#orderModal').modal('show');
                     loadProducts();
                     loadCustomers();
@@ -1181,7 +1223,8 @@ if (auth == undefined) {
                     $(this).getHoldOrders();
                     $(this).getCustomerOrders();
                     $(this).renderTable(cart);
-                    console.log('product data successfully saved');
+                    
+                    console.log('returned response after saving '+data);
                 }, error: function (data) {
                     console.log('product data not saved');
                     $(".loading").hide();
@@ -1195,6 +1238,7 @@ if (auth == undefined) {
             $("#change").text('');
             $("#payment").val('');
 
+            
         }
 
         $.get(api + 'on-hold', function (data) {
@@ -1446,6 +1490,7 @@ if (auth == undefined) {
 
 
         $("#confirmPayment").on('click', function () {
+
             if ($('#payment').val() == "") {
                 Swal.fire(
                     'Nope!',
@@ -1454,7 +1499,13 @@ if (auth == undefined) {
                 );
             }
             else {
-                $(this).submitDueOrderOffline(1);
+                if(network_status=='online'){
+              
+                    $(this).submitDueOrderOnline(1);
+            }else{
+                 
+                    $(this).submitDueOrderOffline(1);
+            }
             }
         });
 
@@ -2183,7 +2234,11 @@ if (auth == undefined) {
                 $("#settings_id").val("1");
                 $("#store").val(settings.store);
                 $("#address_one").val(settings.address_one);
-                $("#address_two").val(settings.address_two);
+                $("#vfms_token_id").val(settings.vfms_token_id);
+                $("#vfms_intergration_id").val(settings.vfms_intergration_id);
+                $("#vfms_request_type").val(settings.vfms_request_type);
+                $("#tinNumber").val(settings.tinNumber);
+                $("#zNumber").val(settings.zNumber);
                 $("#contact").val(settings.contact);
                 $("#tax").val(settings.tax);
                 $("#symbol").val(settings.symbol);
@@ -2328,6 +2383,7 @@ function loadTransactions() {
                                 <td>${trans.paid == "" ? "" : trans.payment_type == 0 ? "Cash" : 'Card'}</td>
                                 <td>${trans.till}</td>
                                 <td>${trans.user}</td>
+                                <td>${trans.flag}</td>
                                 <td>${trans.paid == "" ? '<button class="btn btn-dark"><i class="fa fa-search-plus"></i></button>' : '<button onClick="$(this).viewTransaction(' + index + ')" class="btn btn-info"><i class="fa fa-search-plus"></i></button></td>'}</tr>
                     `;
 
@@ -2342,13 +2398,14 @@ function loadTransactions() {
                     const result = {};
 
                     for (const { itemName, price, quantity, id, category } of sold_items) {
-                        if (!result[itemName]) result[itemName] = [];
-                        result[itemName].push({ id, price, quantity, category });
+                        if (!result[id]) result[id] = [];
+                        result[id].push({ id, price, itemName, quantity, category });
                     }
 
                     for (item in result) {
 
                         let price = 0;
+                        let itemName ='';
                         let quantity = 0;
                         let id = 0;
                         let category = "";
@@ -2356,13 +2413,14 @@ function loadTransactions() {
                         result[item].forEach(i => {
                             id = i.id;
                             price = i.price;
+                            itemName = i.itemName
                             quantity += i.quantity;
                             category = i.category;
                         });
 
                         sold.push({
                             id: id,
-                            product: item,
+                            itemName: item,
                             qty: quantity,
                             price: price,
                             category: category,
@@ -2434,12 +2492,15 @@ function loadSoldProducts() {
 
     sold.forEach((item, index) => {
 
+       
         items += item.qty;
         products++;
 
         let product = allProducts.filter(function (selected) {
             return selected._id == item.id;
         });
+
+        console.log('this is product id'+ product);
 
         let category = allCategories.filter(function (category) {
             return category._id == item.category;
@@ -2450,11 +2511,16 @@ function loadSoldProducts() {
         if(soldCategories.indexOf(category[0].name)==-1){
             soldCategories.push(category[0].name);
         }
-                
-        counter++;
 
+        let productName = allProducts.filter(function (selected) {
+                return selected._id == item.id ? selected.name: '';
+        });
+                
+        console.log(productName);
+        counter++;
+        
         sold_list += `<tr>
-            <td>${item.product}</td>
+            <td>${productName[0].name}</td>
             <td>${item.qty}</td>
             <td>${product[0].stock == 1 ? product.length > 0 ? product[0].quantity : '' : 'N/A'}</td>
             <td>${category[0].name}</td>
@@ -2635,15 +2701,15 @@ $.fn.viewTransaction = function (index) {
 
 
     receipt = `<div style="font-size: 10px;">                            
-        <p style="text-align: center;">
-        ${settings.img == "" ? settings.img : '<img style="max-width: 50px;max-width: 100px;" src ="' + img_path + settings.img + '" /><br>'}
-            <span style="font-size: 22px;">${settings.store}</span> <br>
-            ${settings.address_one} <br>
-            ${settings.address_two} <br>
-            ${settings.contact != '' ? 'Tel: ' + settings.contact + '<br>' : ''} 
-            ${settings.tax != '' ? 'Vat No: ' + settings.tax + '<br>' : ''} 
-    </p>
-    <hr>
+    <p style="text-align: center;">
+    ${settings.img == "" ?'<img style="max-width: 50px;max-width: 50px;" src ="assets/images/zrb_logo.png" /><br>' : '<img style="max-width: 50px;max-width: 50px;" src ="assets/images/zrb_logo.png" /><br>'}
+        <span style="font-size: 14px;">TAX PAYER: ${settings.store}</span> <br>
+        Z NUMBER:  ${settings.znumber} <br>
+        TIN:  ${settings.tinNumber}<br>
+        VRN: ${settings.vrnNumber} <br>
+        STREET: ${settings.street}
+        </p>
+        <hr>
     <left>
         <p>
         Invoice : ${orderNumber} <br>
@@ -2680,10 +2746,10 @@ $.fn.viewTransaction = function (index) {
         ${tax_row}
     
         <tr>
-            <td><h3>Total</h3></td>
-            <td><h3>:</h3></td>
+            <td><h4>Total</h4></td>
+            <td><h4>:</h4></td>
             <td>
-                <h3>${settings.symbol}${" "+numberWithCommas(allTransactions[index].total)}</h3>
+                <h4>${settings.symbol}${" "+numberWithCommas(allTransactions[index].total)}</h4>
             </td>
         </tr>
         ${payment == 0 ? '' : numberWithCommas(payment)}
@@ -2693,7 +2759,7 @@ $.fn.viewTransaction = function (index) {
         <hr>
         <br>
         <p style="text-align: center;">
-         ${settings.footer}
+            <img src = 'assets/images/qrcodeImage.png'/>
          </p>
         </div>`;
 

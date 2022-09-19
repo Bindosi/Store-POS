@@ -82,6 +82,11 @@ app.post( "/post", upload.single('imagename'), function ( req, res ) {
             "percentage": req.body.percentage,
             "charge_tax": req.body.charge_tax,
             "footer": req.body.footer,
+            "zNumber": req.body.zNumber,
+            "tinNumber": req.body.tinNumber,
+            "vfms_token_id": req.body.vfms_token_id,
+            "vfms_intergration_id": req.body.vfms_intergration_id,
+            "vfms_request_type": req.body.vfms_request_type,
             "img": image
         }       
     }
