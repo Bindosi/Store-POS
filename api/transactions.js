@@ -23,7 +23,7 @@ app.get("/", function(req, res) {
 
  
 app.get("/all", function(req, res) {
-  transactionsDB.find({}, function(err, docs) {
+  transactionsDB.find({flag: 'Connected'}, function(err, docs) {
     res.send(docs);
   });
 });
@@ -73,6 +73,7 @@ app.get("/by-date", function(req, res) {
       );
   }
 
+
   if(req.query.user != 0 && req.query.till == 0) {
     transactionsDB.find(
       { $and: [{ date: { $gte: startDate.toJSON(), $lte: endDate.toJSON() }}, { status: parseInt(req.query.status) }, { user_id: parseInt(req.query.user) }] },
@@ -121,6 +122,18 @@ app.post("/new", function(req, res) {
   });
 });
 
+app.post("/save", function(req, res) {
+  let transaction = req.body;
+    transactionsDB.update( {
+        _id: transaction.oderId
+    }, {
+      $set: {
+        saved:transaction.saved
+      }
+    },{},
+  );
+  res.send( transaction.orderId );
+});
 
 
 app.put("/new", function(req, res) {

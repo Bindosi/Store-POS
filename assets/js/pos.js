@@ -45,6 +45,7 @@ let html2canvas = require('html2canvas');
 let JsBarcode = require('jsbarcode');
 let macaddress = require('macaddress');
 const { forEach } = require("async");
+const multer = require("multer");
 var internetAvailable = require("internet-available");
 let categories = [];
 let holdOrderList = [];
@@ -69,6 +70,9 @@ let by_user = 0;
 let by_status = 1;
 let by_category = 0;
 let network_status = 'offline';
+
+'use strict';
+const excelToJson = require('convert-excel-to-json');
 
 $(function () {
 
@@ -114,9 +118,6 @@ window.addEventListener('online', updateOnlineStatus)
 window.addEventListener('offline', updateOnlineStatus)
 
 updateOnlineStatus();
-
-
-
 
 
 
@@ -223,6 +224,10 @@ if (auth == undefined) {
         if (0 == user.perm_products) { $(".p_one").hide() };
         if (0 == user.perm_categories) { $(".p_two").hide() };
         if (0 == user.perm_transactions) { $(".p_three").hide() };
+        if (0 == user.perm_settings) { $(".p_delete").hide() };
+        if (0 == user.perm_settings) { $('#totals ').hide() };
+        if (0 == user.perm_settings) { $('#sold_category_list ').hide() };
+        if (0 == user.perm_settings) { $('#product_sales_row').hide() };
         if (0 == user.perm_users) { $(".p_four").hide() };
         if (0 == user.perm_settings) { $(".p_five").hide() };
 
@@ -834,7 +839,7 @@ if (auth == undefined) {
         
             
             $.fn.receiptAndSave =  function(json){
-                let date = json.issueDate; 
+                let date =  moment(json.issueDate).format("YYYY-MM-DD HH:mm:ss");
                 let paidZRB = json.receitpAmount;
                 let currentTime = json.issueDate;
                 let customer = json.salesCustomer;
@@ -862,7 +867,8 @@ if (auth == undefined) {
                     mac: platform.mac,
                     user: user.fullname,
                     user_id: user._id,
-                    flag:network_status
+                    flag:network_status,
+                    saved:"false"
                 }
     
           
@@ -910,9 +916,9 @@ if (auth == undefined) {
                             ${items}                
                     
                             <tr>                        
-                                <td>Total Tax Excl.</td>
+                                <td><b>Total Tax Excl.</b></td>
                                 <td>:</td>
-                                <td>${json.salesCurrency}${" "+ numberWithCommas(json.taxExclussive.toFixed(2))}</td>
+                                <td><b>${json.salesCurrency}${" "+ numberWithCommas(json.taxExclussive.toFixed(2))}</b></td>
                             </tr>
                             <tr>
                                 <td>Discount</td>
@@ -1024,6 +1030,7 @@ if (auth == undefined) {
             let type = "";
             let tax_row = "";
             let network_status = "Error";
+            let total_tax_exclusive = 0.0;
 
 
             switch (paymentType) {
@@ -1060,11 +1067,16 @@ if (auth == undefined) {
 
 
             if (settings.charge_tax) {
+                total_tax_exclusive = parseFloat(orderTotal).toFixed(2)- parseFloat(totalVat).toFixed(2);
+                
                 tax_row = `<tr>
                     <td>Vat(${settings.percentage})% </td>
                     <td>:</td>
-                    <td>${settings.symbol}${parseFloat(totalVat).toFixed(2)}</td>
+                    <td>${settings.symbol+" "}${parseFloat(totalVat).toFixed(2)}</td>
                 </tr>`;
+            }else{
+
+                total_tax_exclusive = parseFloat(orderTotal).toFixed(2);
             }
 
 
@@ -1104,7 +1116,7 @@ if (auth == undefined) {
             Z NUMBER:  ${settings.zNumber} <br>
             TIN:  ${settings.tinNumber}<br>
             VRN: ${settings.vrnNumber} <br>
-            STREET: ${settings.street}
+            STREET: ${settings.address_one}
             </p>
             <hr>
         <left>
@@ -1116,7 +1128,7 @@ if (auth == undefined) {
         Currency : ${settings.symbol}<br>
         Issue Date : ${date}
         </left>
-        <hr>
+       
         <table width="100%">
             <thead style="text-align: left;">
             <tr>
@@ -1129,9 +1141,9 @@ if (auth == undefined) {
             ${items}                
      
             <tr>                        
-                <td><b>Subtotal</b></td>
+                <td><b>Total Tax Excl.</b></td>
                 <td>:</td>
-                <td><b>${settings.symbol}${" "+ numberWithCommas(subTotal.toFixed(2))}</b></td>
+                <td><b>${settings.symbol}${" "+ numberWithCommas(total_tax_exclusive)}</b></td>
             </tr>
             <tr>
                 <td>Discount</td>
@@ -1198,6 +1210,7 @@ if (auth == undefined) {
                 user: user.fullname,
                 user_id: user._id,
                 flag: network_status,
+                saved:"false"
             }
             console.log('this is data returned after save'+ JSON.stringify(data));
             let offlineOrderNumber = "ZRBT"+orderNumber;
@@ -1430,13 +1443,57 @@ if (auth == undefined) {
 
         
         $.fn.deleteAllTransactions = function () {
-            $.get(api + 'deleteTransactions', function (data) {
-                console.log('all transactions data deleted');
-                console.log('operation status'+data);
-            });
+            user = storage.get('user');
+            Swal.fire({
+                title: 'All transactions will be deleted! Irreversibly!',
+                html: `
+               Enter the password to continue <input type="password" id="password" class="swal2-input" placeholder="Password">`,
+                confirmButtonText: 'Continue',
+                icon: 'warning',
+                cancelButtonText: 'Close',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                focusConfirm: false,
+                preConfirm: () => {
+                  const password = Swal.getPopup().querySelector('#password').value
+                  if (!password) {
+                    Swal.showValidationMessage(`Please enter the password`)
+                  }
+                  return { password: password }
+                }
+              }).then((result) => {
+                
+                if(btoa(result.value.password)==user.password){
+                    console.log('user authenticated');
+                    loadTransacts();
+                    loadUserList();
+                    $('#pos_view').hide();
+                    $('#pointofsale').show();
+                    $('#transactions_view').show();
+                    $('#deleteAllTransactions').hide();
+                    $(this).hide();
+                }else{
+                    Swal.fire('incorrect password');
+                    $('#pos_view').hide();
+                    $('#pointofsale').show();
+                    $('#deleteAllTransactions').show();
+                    $(this).hide();
+                }
+                  
+               
+              })
+              
+           
+        }
+
+        $.fn.importProducts = function(){
+
+            $('#importProducts').modal('show');
         }
 
         $('#deleteAllTransactions').click(function () {
+            
 
             $.fn.deleteAllTransactions();
         });
@@ -1517,6 +1574,7 @@ if (auth == undefined) {
             $('#pos_view').hide();
             $('#pointofsale').show();
             $('#transactions_view').show();
+            $('#deleteAllTransactions').show();
             $(this).hide();
 
         });
@@ -1526,6 +1584,7 @@ if (auth == undefined) {
             $('#pos_view').show();
             $('#transactions').show();
             $('#transactions_view').hide();
+            $('#deleteAllTransactions').hide();
             $(this).hide();
         });
 
@@ -1586,8 +1645,138 @@ if (auth == undefined) {
 
         });
 
+        $('#importProducts').submit(function (e) {
+            e.preventDefault();
+            let filename = '';
+
+            $(this).attr('action', api + 'inventory/product/fileupload');
+            $(this).attr('method', 'POST');
+
+            $(this).ajaxSubmit({
+                contentType: 'application/json',
+                success: function (response) {
+                    filename = response;
+                    importFile(filename);
+                    console.log('this is the file name'+response);
+                    $('#importProducts').get(0).reset();
+                    $('#current_img').text('');
 
 
+                    loadProducts();
+                    Swal.fire({
+                        title: 'Product Saved',
+                        text: "Select an option below to continue.",
+                        icon: 'success',
+                        showCancelButton: true,
+                        confirmButtonColor: '#3085d6',
+                        cancelButtonColor: '#d33',
+                        confirmButtonText: 'Add another',
+                        cancelButtonText: 'Close'
+                    }).then((result) => {
+
+                        if (!result.value) {
+                            $("#newProduct").modal('hide');
+                        }
+                    });
+                }, error: function (data) {
+                    console.log(data);
+                }
+            });
+
+            console.log('this is the obtained filename'+filename);
+
+            
+
+
+        });
+
+     
+            
+        function importFile(importedfilename){
+
+            const result = excelToJson({
+                
+                sourceFile: img_path +importedfilename,
+               
+                header:{
+                    // Is the number of rows that will be skipped and will not be present at our result object. Counting from top to bottom
+                    rows: 1 // 2, 3, 4, etc.
+                },
+                columnToKey: {
+                    //this configures the first row as the field keys name for example if column A1 has id and A2 has name then the resulting will be id:'12343', name: 'something'
+                    '*': '{{columnHeader}}'
+                }
+            
+            });
+            let products = []
+            let importedProducts = []
+                products = result.Sheet1;
+        
+             //for testing    products = [{"id":"","price":"1500","category":"Electronics","quantity":20,"name":"Chicken chips","stock":1,"img":"1663286556652.jpg"},{"id":"","price":"1500","category":"Snacks","quantity":20,"name":"Chicken chips","stock":1,"img":"1663286556652.jpg"},{"id":"","price":"1500","category":"Snacks","quantity":20,"name":"Chicken chips","stock":1,"img":"1663286556652.jpg"}]
+                
+                 products.forEach((imported, index)=>{
+                    let Product = {
+                            _id: parseInt(imported.id),
+                            price: imported.price,
+                            itemId: imported.itemId ==""? 0: imported.itemId,
+                            discount: imported.discount==""? 0: imported.discount,
+                            category: imported.category,
+                            quantity: imported.quantity == "" ? 0 : imported.quantity,
+                            name: imported.name,
+                            stock: imported.stock == "on" ? 0 : 1,    
+                            img: imported.img        
+                        }
+                        
+                                if(imported.id == ""||imported.id==" "||imported.id=="nil") { 
+                                        Product._id = Math.floor((Date.now() / 1000)-(11*index));  
+                                }
+                                
+                                let categoryID = allCategories.filter(function (category) {
+                                    return category.name == imported.category;
+                                });
+                                console.log('this is the resulting category'+categoryID[0]._id);
+                                Product.category = categoryID[0]._id;
+                                importedProducts.push(Product);
+                            });
+            
+       
+            console.log('this is the imported products '+JSON.stringify(importedProducts));
+            $.ajax({
+                contentType: 'application/json',
+                url: api + 'inventory/product/import',
+                type: 'POST',
+                data: JSON.stringify(importedProducts),
+                cache: false,
+                processData: false,
+                success: function (data) {
+
+                        loadProducts();
+                        Swal.fire({
+                            title: 'Importing Completed',
+                            text: "Select an option below to continue.",
+                            icon: 'success',
+                            showCancelButton: true,
+                            confirmButtonColor: '#3085d6',
+                            cancelButtonColor: '#d33',
+                            confirmButtonText: 'Import another',
+                            cancelButtonText: 'Close'
+                        }).then((result) => {
+        
+                            if (!result.value) {
+                                $("#newProduct").modal('hide');
+                            }
+                        });
+                    
+                   
+                    
+                }, error: function (data) {
+                    console.log(data);
+                }
+            });
+
+            counter++;
+          };
+      
         $('#saveCategory').submit(function (e) {
             e.preventDefault();
 
@@ -1723,6 +1912,8 @@ if (auth == undefined) {
             $('#categoryName').val(allCategories[index].name);
             $('#category_id').val(allCategories[index]._id);
             $('#newCategory').modal('show');
+            
+
         }
 
 
@@ -1843,8 +2034,9 @@ if (auth == undefined) {
             $.get(api + 'users/all', function (users) {
 
 
-
+                
                 allUsers = [...users];
+                console.log('thsese are all the users '+ JSON.stringify(allUsers))
 
                 users.forEach((user, index) => {
 
@@ -2326,8 +2518,7 @@ $.fn.print = function () {
 
 }
 
-
-function loadTransactions() {
+function loadTransacts() {
 
     let tills = [];
     let users = [];
@@ -2339,6 +2530,7 @@ function loadTransactions() {
     sold = [];
 
     let counter = 0;
+    let errCount = 0;
     let transaction_list = '';
     let query = `by-date?start=${start_date}&end=${end_date}&user=${by_user}&status=${by_status}&till=${by_till}`;
 
@@ -2354,17 +2546,23 @@ function loadTransactions() {
             allTransactions = [...transactions];
 
             transactions.forEach((trans, index) => {
+                console.log('these are the current settings'+ JSON.stringify(settings))
+
+                
 
                 sales += parseFloat(trans.total);
                 transact++;
 
 
+                 
 
                 trans.items.forEach(item => {
-                    sold_items.push(item);
+                    
+                        sold_items.push(item);
+                   
                 });
 
-
+                
                 if (!tills.includes(trans.till)) {
                     tills.push(trans.till);
                 }
@@ -2373,20 +2571,211 @@ function loadTransactions() {
                     users.push(trans.user_id);
                 }
 
+                 console.log('this is the save flag  '+" "+trans.saved+" "+trans.order);
+
                 counter++;
+               
                 transaction_list += `<tr>
                                 <td>${trans.order}</td>
                                 <td class="nobr">${moment(trans.date).format('YYYY MMM DD hh:mm:ss')}</td>
                                 <td>${numberWithCommas(trans.total)}</td>
                                 <td>${trans.paid == "" ? "" : numberWithCommas(trans.paid)}</td>
                                 <td>${trans.change ? numberWithCommas(Math.abs(trans.change).toFixed(2)) : ''}</td>
-                                <td>${trans.paid == "" ? "" : trans.payment_type == 0 ? "Cash" : 'Card'}</td>
                                 <td>${trans.till}</td>
                                 <td>${trans.user}</td>
                                 <td>${trans.flag}</td>
+                                <td><button class="btn btn-dark"><i class="fa fa-save"></i></button></td>
                                 <td>${trans.paid == "" ? '<button class="btn btn-dark"><i class="fa fa-search-plus"></i></button>' : '<button onClick="$(this).viewTransaction(' + index + ')" class="btn btn-info"><i class="fa fa-search-plus"></i></button></td>'}</tr>
                     `;
+                
+            
+                if (counter == transactions.length) {
 
+                    $('#total_sales_1 #counter').text(numberWithCommas(parseFloat(sales).toFixed(2)));
+                    $('#total_transactions_1 #counter').text(transact);
+                    $('#total_tax_payable #counter').text(numberWithCommas(parseFloat(sales*0.15).toFixed(2)));
+                    $('#trans_currency').text(settings.symbol);
+                    
+
+                    const result = {};
+
+                    for (const { itemName, price, quantity, id, category } of sold_items) {
+                        if (!result[id]) result[id] = [];
+                        result[id].push({ id, price, itemName, quantity, category });
+                    }
+
+                    for (item in result) {
+
+                        let price = 0;
+                        let itemName ='';
+                        let quantity = 0;
+                        let id = 0;
+                        let category = "";
+
+                        result[item].forEach(i => {
+                            id = i.id;
+                            price = i.price;
+                            itemName = i.itemName
+                            quantity += i.quantity;
+                            category = i.category;
+                        });
+
+                        sold.push({
+                            id: id,
+                            itemName: item,
+                            qty: quantity,
+                            price: price,
+                            category: category,
+                        });
+                    }
+
+                    loadSoldProducts();
+
+
+                    if (by_user == 0 && by_till == 0) {
+
+                        userFilter(users);
+                        tillFilter(tills);
+                    }
+
+
+                    $('#transaction_list').html(transaction_list);
+                    $('#transactionList').DataTable({
+                        "order": [[1, "desc"]]
+                        , "autoWidth": false
+                        , "info": true
+                        , "JQueryUI": true
+                        , "ordering": true
+                        , "paging": true,
+                        "dom": 'Bfrtip',
+                        "buttons": ['csv', 'excel', 'pdf',]
+
+                    });
+                }
+            });
+        }
+        else {
+            Swal.fire(
+                'No data!',
+                'No transactions available within the selected criteria',
+                'warning'
+            );
+        }
+
+    });
+}
+
+
+
+function loadTransactions() {
+
+    let tills = [];
+    let users = [];
+    let sales = 0;
+    let transact = 0;
+    let unique = 0;
+
+    sold_items = [];
+    sold = [];
+
+    let counter = 0;
+    let errCount = 0;
+    let transaction_list = '';
+    let query = `by-date?start=${start_date}&end=${end_date}&user=${by_user}&status=${by_status}&till=${by_till}`;
+
+
+    $.get(api + query, function (transactions) {
+
+        if (transactions.length > 0) {
+
+
+            $('#transaction_list').empty();
+            $('#transactionList').DataTable().destroy();
+
+            allTransactions = [...transactions];
+
+            transactions.forEach((trans, index) => {
+                console.log('these are the current settings'+ JSON.stringify(settings))
+
+                if(trans.flag =='Connected'){
+
+                sales += parseFloat(trans.total);
+                transact++;
+
+                }
+                
+                if(trans.flag =='Error' && trans.saved == 'true'){
+                        sales += 0.0; 
+                    }else{
+                        transact++;
+                        sales += parseFloat(trans.total);
+                    }
+                 
+
+                trans.items.forEach(item => {
+
+                    if(trans.flag == 'Connected'){
+                        sold_items.push(item);
+                    }
+
+                    if(trans.flag == 'Error' && trans.saved != 'true'){
+                        if(errCount < 10){
+                            
+                            sold_items.push(item);
+                        }
+                    }
+                   
+
+                });
+
+                
+                if (!tills.includes(trans.till)) {
+                    tills.push(trans.till);
+                }
+
+                if (!users.includes(trans.user_id)) {
+                    users.push(trans.user_id);
+                }
+
+                 console.log('this is the save flag  '+" "+trans.saved+" "+trans.order);
+
+                counter++;
+               
+            if(trans.flag == 'Connected'){
+                transaction_list += `<tr>
+                                <td>${trans.order}</td>
+                                <td class="nobr">${moment(trans.date).format('YYYY MMM DD hh:mm:ss')}</td>
+                                <td>${numberWithCommas(trans.total)}</td>
+                                <td>${trans.paid == "" ? "" : numberWithCommas(trans.paid)}</td>
+                                <td>${trans.change ? numberWithCommas(Math.abs(trans.change).toFixed(2)) : ''}</td>
+                                <td>${trans.till}</td>
+                                <td>${trans.user}</td>
+                                <td>${trans.flag}</td>
+                                <td><button class="btn btn-dark"><i class="fa fa-save"></i></button></td>
+                                <td>${trans.paid == "" ? '<button class="btn btn-dark"><i class="fa fa-search-plus"></i></button>' : '<button onClick="$(this).viewTransaction(' + index + ')" class="btn btn-info"><i class="fa fa-search-plus"></i></button></td>'}</tr>
+                    `;
+                }else{
+
+                    if(trans.flag == 'Error' && trans.saved != 'true'){
+                        transaction_list += `<tr>
+                                <td>${trans.order}</td>
+                                <td class="nobr">${moment(trans.date).format('YYYY MMM DD hh:mm:ss')}</td>
+                                <td>${numberWithCommas(trans.total)}</td>
+                                <td>${trans.paid == "" ? "" : numberWithCommas(trans.paid)}</td>
+                                <td>${trans.change ? numberWithCommas(Math.abs(trans.change).toFixed(2)) : ''}</td>
+                                <td>${trans.till}</td>
+                                <td>${trans.user}</td>
+                                <td>${trans.flag}</td>
+                                <td>${'<button onClick="$(this).saveTransaction('+index+')" class="btn btn-dark"><i class="fa fa-save"></i></button></td>'}
+                                <td>${trans.paid == "" ? '<button class="btn btn-dark"><i class="fa fa-search-plus"></i></button>' : '<button onClick="$(this).viewTransaction(' + index + ')" class="btn btn-info"><i class="fa fa-search-plus"></i></button></td>'}</tr>
+                                
+                    `;
+                    errCount++;
+
+                    }
+
+                }
+            
                 if (counter == transactions.length) {
 
                     $('#total_sales_1 #counter').text(numberWithCommas(parseFloat(sales).toFixed(2)));
@@ -2500,7 +2889,6 @@ function loadSoldProducts() {
             return selected._id == item.id;
         });
 
-        console.log('this is product id'+ product);
 
         let category = allCategories.filter(function (category) {
             return category._id == item.category;
@@ -2515,9 +2903,12 @@ function loadSoldProducts() {
         let productName = allProducts.filter(function (selected) {
                 return selected._id == item.id ? selected.name: '';
         });
-                
-        console.log(productName);
+              
         counter++;
+
+        console.log('this is the product name'+productName[0].name);
+
+       if(productName.length >0 && product.length>0) {
         
         sold_list += `<tr>
             <td>${productName[0].name}</td>
@@ -2526,7 +2917,7 @@ function loadSoldProducts() {
             <td>${category[0].name}</td>
             <td>${settings.symbol + " " + numberWithCommas((item.qty * parseFloat(item.price)).toFixed(2))}</td>
             </tr>`;
-
+        }
         if (counter == sold.length) {
             $('#total_items_1 #counter').text(items);
             $('#total_products_1 #counter').text(products);
@@ -2640,6 +3031,28 @@ function tillFilter(tills) {
 
 }
 
+$.fn.saveTransaction = function (index) {
+    allTransactions[index].saved = "true";
+    let data = allTransactions[index];
+console.log('this is data string'+JSON.stringify(data));
+   
+$.ajax({
+        url: api + 'new',
+        type: 'PUT',
+        data: JSON.stringify(data),
+        contentType: 'application/json; charset=utf-8',
+        cache: false,
+        processData: false,
+        success: function (data) {
+            console.log('returned response after saving '+ data);
+            Swal.fire("Transaction saved!");
+            
+        }, error: function (data) {
+            Swal.fire("Something went wrong!", 'Please refresh this page and try again'+JSON.stringify(data));
+        }
+    });
+}
+
 
 $.fn.viewTransaction = function (index) {
 
@@ -2653,12 +3066,14 @@ $.fn.viewTransaction = function (index) {
     let tax_row = "";
     let items = "";
     let products = allTransactions[index].items;
+    let total_without_tax = 0.0;
 
     products.forEach(item => {
         items += "<tr><td>" + item.itemName + "</td><td>" + item.quantity + "</td><td>" + settings.symbol + " "+ numberWithCommas(parseFloat(item.price).toFixed(2)) + "</td></tr>";
 
     });
 
+    
 
     switch (allTransactions[index].payment_type) {
 
@@ -2691,12 +3106,17 @@ $.fn.viewTransaction = function (index) {
 
 
     if (settings.charge_tax) {
+        let taxAmount = parseFloat(allTransactions[index].tax).toFixed(2);
+         total_without_tax = numberWithCommas(allTransactions[index].subtotal-taxAmount);
         tax_row = `<tr>
                 <td>Vat(${settings.percentage})% </td>
                 <td>:</td>
-                <td>${settings.symbol}${parseFloat(allTransactions[index].tax).toFixed(2)}</td>
+                <td>${settings.symbol}${taxAmount}</td>
             </tr>`;
+    }else{
+        total_without_tax = numberWithCommas(allTransactions[index].subtotal);
     }
+
 
 
 
@@ -2704,10 +3124,10 @@ $.fn.viewTransaction = function (index) {
     <p style="text-align: center;">
     ${settings.img == "" ?'<img style="max-width: 50px;max-width: 50px;" src ="assets/images/zrb_logo.png" /><br>' : '<img style="max-width: 50px;max-width: 50px;" src ="assets/images/zrb_logo.png" /><br>'}
         <span style="font-size: 14px;">TAX PAYER: ${settings.store}</span> <br>
-        Z NUMBER:  ${settings.znumber} <br>
+        Z NUMBER:  ${settings.zNumber} <br>
         TIN:  ${settings.tinNumber}<br>
         VRN: ${settings.vrnNumber} <br>
-        STREET: ${settings.street}
+        STREET: ${settings.address_one}
         </p>
         <hr>
     <left>
@@ -2731,11 +3151,10 @@ $.fn.viewTransaction = function (index) {
         </thead>
         <tbody>
         ${items}                
- 
         <tr>                        
-            <td><b>Subtotal</b></td>
+            <td><b>Total Tax Excl.</b></td>
             <td>:</td>
-            <td><b>${settings.symbol}${" "+numberWithCommas(allTransactions[index].subtotal)}</b></td>
+            <td><b>${settings.symbol}${" "+ total_without_tax}</b></td>
         </tr>
         <tr>
             <td>Discount</td>

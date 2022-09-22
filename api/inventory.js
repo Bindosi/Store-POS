@@ -6,17 +6,29 @@ const async = require( "async" );
 const fileUpload = require('express-fileupload');
 const multer = require("multer");
 const fs = require('fs');
-
+let Categories = require("./categories");
+const { doesNotMatch } = require("assert");
 
 const storage = multer.diskStorage({
     destination: process.env.APPDATA+'/POS/uploads',
     filename: function(req, file, callback){
         callback(null, Date.now() + '.jpg'); // 
     }
+
+});
+
+const excelStorage = multer.diskStorage({
+    destination: process.env.APPDATA+'/POS/uploads',
+    filename: function(req, file, callback){
+        callback(null, Date.now() + '.xlsx'); // 
+    }
+
 });
 
 
+
 let upload = multer({storage: storage});
+let excelUpload = multer({storage: excelStorage});
 
 app.use(bodyParser.json());
 
@@ -37,6 +49,7 @@ app.get( "/", function ( req, res ) {
 
     res.send( "Inventory API" );
 } );
+
 
 
  
@@ -61,11 +74,76 @@ app.get( "/products", function ( req, res ) {
 } );
 
 
+
+app.post("/product/import",  function(req, res){
  
+
+    let products = req.body;
+    inventoryDB.insert(products, function (err, newDocs) {
+        if ( err ) res.status( 500 ).send( err );
+        else res.sendStatus( 200 );
+      });
+
+})
+
+  
+
+ 
+app.delete( "/product/:productId", function ( req, res ) {
+    inventoryDB.remove( {
+        _id: parseInt(req.params.productId)
+    }, function ( err, numRemoved ) {
+        if ( err ) res.status( 500 ).send( err );
+        else res.sendStatus( 200 );
+    } );
+} );
+
+ 
+
+app.post( "/product/sku", function ( req, res ) {
+    var request = req.body;
+    inventoryDB.findOne( {
+            _id: parseInt(request.skuCode)
+    }, function ( err, product ) {
+         res.send( product );
+    } );
+} );
+
+
+app.post( "/product/fileupload", excelUpload.single('imagename'), function ( req, res ) {
+    
+    let image = '';
+  
+    if(req.body.img != "") {
+        image = req.body.img;        
+    }
+
+    if(req.file) {
+        image = req.file.filename;  
+    }
+ 
+    res.send(image);
+    
+    if(req.body.remove == 1) {
+        const path = './resources/app/public/uploads/product_image/'+ req.body.img;
+        try {
+          fs.unlinkSync(path)
+        } catch(err) {
+          console.error(err)
+        }
+
+        if(!req.file) {
+            image = '';
+        }
+    }
+    
+});
+
+
 app.post( "/product", upload.single('imagename'), function ( req, res ) {
 
     let image = '';
-
+  
     if(req.body.img != "") {
         image = req.body.img;        
     }
@@ -88,6 +166,7 @@ app.post( "/product", upload.single('imagename'), function ( req, res ) {
         }
     }
     
+
     let Product = {
         _id: parseInt(req.body.id),
         price: req.body.price,
@@ -124,8 +203,6 @@ app.post( "/product", upload.single('imagename'), function ( req, res ) {
 
 });
 
-
-
  
 app.delete( "/product/:productId", function ( req, res ) {
     inventoryDB.remove( {
@@ -147,7 +224,7 @@ app.post( "/product/sku", function ( req, res ) {
     } );
 } );
 
- 
+
 
 
 app.decrementInventory = function ( products ) {

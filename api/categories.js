@@ -50,9 +50,6 @@ app.delete( "/category/:categoryId", function ( req, res ) {
     } );
 } );
 
- 
-
- 
 app.put( "/category", function ( req, res ) {
     categoryDB.update( {
         _id: parseInt(req.body.id)

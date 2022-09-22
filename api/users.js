@@ -59,6 +59,7 @@ app.get( "/logout/:userId", function ( req, res ) {
 
 
 app.post( "/login", function ( req, res ) {  
+    
     usersDB.findOne( {
         username: req.body.username,
         password: btoa(req.body.password)
