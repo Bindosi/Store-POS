@@ -103,11 +103,18 @@ app.get("/by-date", function(req, res) {
 
 });
 
-
+app.post("/deleteTransactions", function(req, res){
+  transactionsDB.remove({}, {},function(err){
+    if(err) res.status(500).send(err);
+    else{
+      res.sendStatus(200);
+    }
+  }); 
+});
 
 app.post("/new", function(req, res) {
   let newTransaction = req.body;
-  //transactionsDB.remove({}, {},); this removes everythiing
+ 
   transactionsDB.insert(newTransaction, function(err, transaction) {    
     if (err) res.status(500).send(err);
     else {

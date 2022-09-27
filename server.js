@@ -7,7 +7,7 @@ let express = require("express"),
 const PORT = process.env.PORT || 8001;
 
 console.log("Server started");
-app.use(bodyParser.json());
+app.use(bodyParser.json({limit: "50mb"}));
 app.use(bodyParser.urlencoded({ extended: false }));
 
 app.all("/*", function(req, res, next) {

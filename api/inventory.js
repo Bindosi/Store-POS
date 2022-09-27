@@ -9,6 +9,8 @@ const fs = require('fs');
 let Categories = require("./categories");
 const { doesNotMatch } = require("assert");
 
+
+
 const storage = multer.diskStorage({
     destination: process.env.APPDATA+'/POS/uploads',
     filename: function(req, file, callback){
@@ -30,7 +32,10 @@ const excelStorage = multer.diskStorage({
 let upload = multer({storage: storage});
 let excelUpload = multer({storage: excelStorage});
 
-app.use(bodyParser.json());
+//app.use(bodyParser.json());
+app.use(bodyParser.json({limit:1024*1024*20, type:'application/json'}));
+app.use(bodyParser.urlencoded({extended:true,limit:1024*1024*20,type:'application/x-www-form-urlencoding' }));
+
 
 
 module.exports = app;
@@ -168,28 +173,34 @@ app.post( "/product", upload.single('imagename'), function ( req, res ) {
     
 
     let Product = {
-        _id: parseInt(req.body.id),
+        _id: parseInt(req.body.barcode),
         price: req.body.price,
-        itemId: req.body.itemId ==""? 0: req.body.itemId,
+        itemId: req.body.no_tax_item =="on"? req.body.itemId:0,
         discount: req.body.discount==""? 0: req.body.discount,
         category: req.body.category,
         quantity: req.body.quantity == "" ? 0 : req.body.quantity,
         name: req.body.name,
+        expiredate: req.body.expiredate,
+        brand: req.body.brand==''? "":req.body.brand,
         stock: req.body.stock == "on" ? 0 : 1,    
         img: image        
     }
-
-    if(req.body.id == "") { 
+if(req.body.savetype =='new'){
+    if(req.body.barcode == "") { 
         Product._id = Math.floor(Date.now() / 1000);
         inventoryDB.insert( Product, function ( err, product ) {
             if ( err ) res.status( 500 ).send( err );
             else res.send( product );
         });
-    }
-    else { 
+            }else{
+                inventoryDB.insert( Product, function ( err, product ) {
+                    if ( err ) res.status( 500 ).send( err );
+                    else res.send( product );
+                });
+            }
+    }else { 
         inventoryDB.update( {
-
-            _id: parseInt(req.body.id)
+            _id: parseInt(req.body.barcode)
         }, Product, {}, function (
             err,
             numReplaced,
@@ -223,6 +234,22 @@ app.post( "/product/sku", function ( req, res ) {
          res.send( product );
     } );
 } );
+
+app.post("/delete/all", function(req, res){
+    inventoryDB.update( {}, {
+        $set: {
+            brand: "Fahud"
+        }
+    }, {},
+);
+    // inventoryDB.({}, {},function(err){
+    //   if(err) res.status(500).send(err);
+    //   else{
+    //     res.sendStatus(200);
+    //   }
+    // }); 
+  });
+  
 
 
 

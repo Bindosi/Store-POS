@@ -71,7 +71,6 @@ let by_status = 1;
 let by_category = 0;
 let network_status = 'offline';
 
-'use strict';
 const excelToJson = require('convert-excel-to-json');
 
 $(function () {
@@ -234,7 +233,7 @@ if (auth == undefined) {
         function loadProducts() {
 
             $.get(api + 'inventory/products', function (data) {
-                console.log('this are all the products in the system'+ JSON.stringify(data));
+                
                 data.forEach(item => {
                 let  price = parseFloat(item.price);
                      item.price = numberWithCommas(price);
@@ -265,6 +264,8 @@ if (auth == undefined) {
                                         <sp class="text-success text-center"><b data-plugin="counterup">${settings.symbol + " "+ numberWithCommas(item.price)}</b> </sp>
                             </div>
                         </div>`;
+                    
+
                     $('#parent').append(item_info);
                 });
 
@@ -358,7 +359,7 @@ if (auth == undefined) {
         };
 
 
-        function barcodeSearch(e) {
+      function barcodeSearch(e) {
 
             e.preventDefault();
             $("#basic-addon2").empty();
@@ -454,7 +455,7 @@ if (auth == undefined) {
             
             item = {
                 id: data._id,
-                itemId: 0,
+                itemId: data.itemId,
                 category: data.category,
                 discount: 0,
                 itemName: data.name,
@@ -710,7 +711,7 @@ if (auth == undefined) {
         async function generateQR(var_text){
                 try{
                    await QRCode.toFile('assets/images/qrcodeImage.png', var_text, opts).then((qrImage) => {
-                            console.log("File", qrImage)
+                           
                         })
                     } catch (err) {
                         console.error(err)
@@ -809,11 +810,10 @@ if (auth == undefined) {
                 salesItems: cart,
             }
             console.log("customer Query"+ JSON.stringify(customerQuery));
-            
             let headerString = {'Content-Type': 'application/json','vfms-request-type': ''+ settings.vfms_request_type+'','vfms-intergration-id': ''+ settings.vfms_intergration_id+'','vfms-token-id': ''+ settings.vfms_token_id+''};
             console.log('this is the headerstring'+JSON.stringify(headerString));
             $.ajax({
-                url: 'http://102.223.7.131:6060/vfms/api/sales/',
+                url: 'https://gateway.zanrevenue.org/vfms/api/sales/',
                 headers: {'Content-Type': 'application/json','vfms-request-type': ''+ settings.vfms_request_type+'','vfms-intergration-id': ''+ settings.vfms_intergration_id+'','vfms-token-id': ''+ settings.vfms_token_id+''},
                 type: 'POST',
                 data: JSON.stringify(customerQuery),
@@ -828,11 +828,11 @@ if (auth == undefined) {
                 console.log('this is the response data'+JSON.stringify(responseData));
                   await generateQR("https://portalvfms.zanrevenue.org/receipt-form/"+json.receiptNumber.toString());
                   await $.fn.receiptAndSave(json);
-                },error: function (responseData) {
+                },error: async function (responseData) {
                     $("#receiptLoading").hide();
                     $("#dueModal").modal('toggle');
-                    $.fn.submitDueOrderOffline(1);
-                    Swal.fire("Connection lost!", 'Printing receipt offline');
+                             Swal.fire("Connection lost!", 'Printing receipt offline');
+                        await  $.fn.submitDueOrderOffline(1);
                 }
             
             });
@@ -845,15 +845,17 @@ if (auth == undefined) {
                 let customer = json.salesCustomer;
                 let refNumber = json.referenceNumber;
                 let receiptNumber = json.receiptNumber;
+                let ZRBtaxAmount = json.taxAmount;
 
                 let data = {
+                    receiptNumber: receiptNumber,
                     order: "ZRBT"+orderNumber,
                     ref_number: refNumber,
                     discount: discount,
                     customer: customer,
                     status: status,
                     subtotal: parseFloat(subTotal),
-                    tax: totalVat,
+                    tax: ZRBtaxAmount,
                     order_type: 1,
                     items: cart,
                     date: currentTime,
@@ -885,7 +887,7 @@ if (auth == undefined) {
                 receipt = `<div style="font-size: 10px;">                            
                 <p style="text-align: center;">
                     ${settings.img == "" ?'<img style="max-width: 50px;max-width: 50px;" src ="assets/images/zrb_logo.png" /><br>' : '<img style="max-width: 50px;max-width: 50px;" src ="assets/images/zrb_logo.png" /><br>'}
-                        <span style="font-size: 14px;">TAX PAYER: ${json.businessName}</span> <br>
+                        <span style="font-size: 10px;">TAX PAYER: ${json.businessName}</span> <br>
                         Z NUMBER:  ${json.znumber} <br>
                         TIN:  ${json.tinNumber}<br>
                         VRN: ${json.vrnNumber} <br>
@@ -1112,7 +1114,7 @@ if (auth == undefined) {
         receipt = `<div style="font-size: 10px;">                            
         <p style="text-align: center;">
         ${settings.img == "" ?'<img style="max-width: 50px;max-width: 50px;" src ="assets/images/zrb_logo.png" /><br>' : '<img style="max-width: 50px;max-width: 50px;" src ="assets/images/zrb_logo.png" /><br>'}
-            <span style="font-size: 14px;">TAX PAYER: ${settings.store}</span> <br>
+            <span style="font-size: 10px;">TAX PAYER: ${settings.store}</span> <br>
             Z NUMBER:  ${settings.zNumber} <br>
             TIN:  ${settings.tinNumber}<br>
             VRN: ${settings.vrnNumber} <br>
@@ -1189,6 +1191,7 @@ if (auth == undefined) {
             }
 
             let data = {
+                receiptNumber: "ZRBT"+orderNumber,
                 order: "ZRBT"+orderNumber,
                 ref_number: refNumber,
                 discount: discount,
@@ -1339,8 +1342,8 @@ if (auth == undefined) {
                 $.each(holdOrderList[index].items, function (index, product) {
                     item = {
                         id: product.id,
-                        itemId: 0,
-                        discount: 0,
+                        itemId: product.itemId,
+                        discount: product.discount,
                         itemName: product.itemName,
                         sku: product.sku,
                         price: product.price,
@@ -1364,8 +1367,8 @@ if (auth == undefined) {
                 $.each(customerOrderList[index].items, function (index, product) {
                     item = {
                         id: product.id,
-                        itemId: 0,
-                        discount: 0,
+                        itemId: product.itemId,
+                        discount: product.discount,
                         itemName: product.itemName,
                         sku: product.sku,
                         price: product.price,
@@ -1430,6 +1433,60 @@ if (auth == undefined) {
             });
         }
 
+        $.fn.deleteAllTransactions = function () {
+            $.get(api + 'deleteTransactions', function (data) {
+                console.log('all transactions data deleted');
+                console.log('operation status'+data);
+            });
+        }
+
+        $('#deleteAllTransactions').click(function () {
+
+            user = storage.get('user');
+            Swal.fire({
+                title: 'All transactions will be deleted! Irreversibly!',
+                html: `
+               Enter the password to continue <input type="password" id="password" class="swal2-input" placeholder="Password">`,
+                confirmButtonText: 'Continue',
+                icon: 'warning',
+                cancelButtonText: 'Close',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                focusConfirm: false,
+                preConfirm: () => {
+                  const password = Swal.getPopup().querySelector('#password').value
+                  if (!password) {
+                    Swal.showValidationMessage(`Please enter the password`)
+                  }
+                  return { password: password }
+                }
+              }).then((result) => {
+                
+                if(btoa(result.value.password)==user.password){
+                    console.log('user authenticated');
+                    $.fn.deleteAllTransactions();
+                    loadUserList();
+                    $('#pos_view').hide();
+                    $('#pointofsale').show();
+                    $('#transactions_view').show();
+                    $('#showAllTransactions').hide();
+                    $(this).hide();
+                }else{
+                    Swal.fire('incorrect password');
+                    $('#pos_view').hide();
+                    $('#pointofsale').show();
+                    $('#showAllTransactions').show();
+                    $(this).hide();
+                }
+                  
+               
+              })
+
+           
+        });
+
+
 
 
         $.fn.getCustomerOrders = function () {
@@ -1442,10 +1499,10 @@ if (auth == undefined) {
         }
 
         
-        $.fn.deleteAllTransactions = function () {
+        $.fn.showAllTransactions = function () {
             user = storage.get('user');
             Swal.fire({
-                title: 'All transactions will be deleted! Irreversibly!',
+                title: 'This will show all transactions!',
                 html: `
                Enter the password to continue <input type="password" id="password" class="swal2-input" placeholder="Password">`,
                 confirmButtonText: 'Continue',
@@ -1471,13 +1528,13 @@ if (auth == undefined) {
                     $('#pos_view').hide();
                     $('#pointofsale').show();
                     $('#transactions_view').show();
-                    $('#deleteAllTransactions').hide();
+                    $('#showAllTransactions').hide();
                     $(this).hide();
                 }else{
                     Swal.fire('incorrect password');
                     $('#pos_view').hide();
                     $('#pointofsale').show();
-                    $('#deleteAllTransactions').show();
+                    $('#showAllTransactions').show();
                     $(this).hide();
                 }
                   
@@ -1492,10 +1549,10 @@ if (auth == undefined) {
             $('#importProducts').modal('show');
         }
 
-        $('#deleteAllTransactions').click(function () {
+        $('#showAllTransactions').click(function () {
             
 
-            $.fn.deleteAllTransactions();
+            $.fn.showAllTransactions();
         });
 
 
@@ -1574,7 +1631,7 @@ if (auth == undefined) {
             $('#pos_view').hide();
             $('#pointofsale').show();
             $('#transactions_view').show();
-            $('#deleteAllTransactions').show();
+            $('#showAllTransactions').show();
             $(this).hide();
 
         });
@@ -1584,7 +1641,7 @@ if (auth == undefined) {
             $('#pos_view').show();
             $('#transactions').show();
             $('#transactions_view').hide();
-            $('#deleteAllTransactions').hide();
+            $('#showAllTransactions').hide();
             $(this).hide();
         });
 
@@ -1604,14 +1661,28 @@ if (auth == undefined) {
 
 
         $('#newProductModal').click(function () {
+            $('#itemId').hide();
+            document.getElementById('barcode').enabled ='true';
+            document.getElementById('savetype').value ='new';
             $('#saveProduct').get(0).reset();
             $('#current_img').text('');
         });
+
+        $('#no_tax_item').click(function () {
+            $('#itemId').toggle();
+            if($('#no_tax_item').val()=='on'){
+                $('#itemId').required = true;
+            }
+            
+        });
+
 
 
         $('#saveProduct').submit(function (e) {
             e.preventDefault();
 
+            console.log("this is the brand name"+ $("#brand").val());
+           
             $(this).attr('action', api + 'inventory/product');
             $(this).attr('method', 'POST');
 
@@ -1716,7 +1787,7 @@ if (auth == undefined) {
                 
                  products.forEach((imported, index)=>{
                     let Product = {
-                            _id: parseInt(imported.id),
+                            _id: parseInt(imported.barcode),
                             price: imported.price,
                             itemId: imported.itemId ==""? 0: imported.itemId,
                             discount: imported.discount==""? 0: imported.discount,
@@ -1727,20 +1798,28 @@ if (auth == undefined) {
                             img: imported.img        
                         }
                         
-                                if(imported.id == ""||imported.id==" "||imported.id=="nil") { 
+                                if(imported.barcode == ""||imported.barcode==" "||imported.barcode=="nil") { 
                                         Product._id = Math.floor((Date.now() / 1000)-(11*index));  
                                 }
                                 
                                 let categoryID = allCategories.filter(function (category) {
                                     return category.name == imported.category;
                                 });
+
+                                if(categoryID[0]._id == ''||categoryID[0]._id == null){
+                                    $.fn.saveCategory();
+
+                                }
+
+                                
+                                
                                 console.log('this is the resulting category'+categoryID[0]._id);
                                 Product.category = categoryID[0]._id;
                                 importedProducts.push(Product);
                             });
             
        
-            console.log('this is the imported products '+JSON.stringify(importedProducts));
+           
             $.ajax({
                 contentType: 'application/json',
                 url: api + 'inventory/product/import',
@@ -1776,6 +1855,21 @@ if (auth == undefined) {
 
             counter++;
           };
+
+
+          $.fn.saveCategory = function (categoryName){
+            method = 'POST';
+            $.ajax({
+                type: method,
+                url: api + 'categories/category'+ categoryName,
+                data: $(this).serialize(),
+                success: function (data, textStatus, jqXHR) {
+                    $('#saveCategory').get(0).reset();
+                }
+
+            });
+          }
+
       
         $('#saveCategory').submit(function (e) {
             e.preventDefault();
@@ -1827,10 +1921,15 @@ if (auth == undefined) {
             $("#category option").filter(function () {
                 return $(this).val() == allProducts[index].category;
             }).prop("selected", true);
-
+            document.getElementById('barcode').disabled = true; 
+            $('#barcode').val(allProducts[index]._id);
+            
             $('#productName').val(allProducts[index].name);
             $('#product_price').val(allProducts[index].price);
             $('#quantity').val(allProducts[index].quantity);
+            $('#brand').val(allProducts[index].brand);
+            document.getElementById('savetype').value ='edit';
+            $('#expiredate').val(allProducts[index].expiredate);
 
             $('#product_id').val(allProducts[index]._id);
             $('#img').val(allProducts[index].img);
@@ -1845,6 +1944,12 @@ if (auth == undefined) {
             if (allProducts[index].stock == 0) {
                 $('#stock').prop("checked", true);
             }
+            if (allProducts[index].itemId != 0) {
+                $('#no_tax_item').prop("checked", true);
+                $('#itemId').val(allProducts[index].itemId);
+                $('#itemId').required = true;
+            }
+            
 
             $('#newProduct').modal('show');
         }
@@ -1915,6 +2020,54 @@ if (auth == undefined) {
             
 
         }
+
+        $.fn.deleteAllProducts = function () {
+            $.ajax({
+                url: api + 'inventory/delete/all',
+                type: 'POST',
+                success: function (result) {
+                    console.log('this is the delete all result' +result);
+                    loadProducts();
+                    Swal.fire(
+                        'Done!',
+                        'Products deleted',
+                        'success'
+                    );
+
+                }
+            });
+           
+        }
+
+        $('#deleteAllProducts').click(function () {
+
+            user = storage.get('user');
+            Swal.fire({
+                title: 'All Products will be deleted! Irreversibly!',
+                confirmButtonText: 'Continue',
+                icon: 'warning',
+                cancelButtonText: 'Close',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                focusConfirm: false,
+              
+              }).then((result) => {
+                    console.log('user authenticated');
+                    $.fn.deleteAllProducts();
+                    loadUserList();
+                    $('#pos_view').show();
+                    $('#pointofsale').hide();
+                    $('#transactions_view').hide();
+                    $(this).hide();
+             
+                  
+               
+              })
+
+           
+        });
+
 
 
         $.fn.deleteProduct = function (id) {
@@ -2036,7 +2189,7 @@ if (auth == undefined) {
 
                 
                 allUsers = [...users];
-                console.log('thsese are all the users '+ JSON.stringify(allUsers))
+                //console.log('thsese are all the users '+ JSON.stringify(allUsers))
 
                 users.forEach((user, index) => {
 
@@ -2524,6 +2677,8 @@ function loadTransacts() {
     let users = [];
     let sales = 0;
     let transact = 0;
+    let totalTax = 0;
+    let payableTax = 0;
     let unique = 0;
 
     sold_items = [];
@@ -2546,20 +2701,21 @@ function loadTransacts() {
             allTransactions = [...transactions];
 
             transactions.forEach((trans, index) => {
-                console.log('these are the current settings'+ JSON.stringify(settings))
+               
 
                 
 
                 sales += parseFloat(trans.total);
+                totalTax += trans.tax;
+
+                if(trans.flag != 'saved'){
+                    payableTax += trans.tax; 
+                }
+ 
                 transact++;
 
-
-                 
-
                 trans.items.forEach(item => {
-                    
                         sold_items.push(item);
-                   
                 });
 
                 
@@ -2571,7 +2727,7 @@ function loadTransacts() {
                     users.push(trans.user_id);
                 }
 
-                 console.log('this is the save flag  '+" "+trans.saved+" "+trans.order);
+                
 
                 counter++;
                
@@ -2695,7 +2851,7 @@ function loadTransactions() {
             allTransactions = [...transactions];
 
             transactions.forEach((trans, index) => {
-                console.log('these are the current settings'+ JSON.stringify(settings))
+                
 
                 if(trans.flag =='Connected'){
 
@@ -2737,7 +2893,7 @@ function loadTransactions() {
                     users.push(trans.user_id);
                 }
 
-                 console.log('this is the save flag  '+" "+trans.saved+" "+trans.order);
+             //    console.log('this is the save flag  '+" "+trans.saved+" "+trans.order);
 
                 counter++;
                
@@ -3034,7 +3190,7 @@ function tillFilter(tills) {
 $.fn.saveTransaction = function (index) {
     allTransactions[index].saved = "true";
     let data = allTransactions[index];
-console.log('this is data string'+JSON.stringify(data));
+//console.log('this is data string'+JSON.stringify(data));
    
 $.ajax({
         url: api + 'new',
@@ -3061,7 +3217,7 @@ $.fn.viewTransaction = function (index) {
     let discount = allTransactions[index].discount;
     let customer = allTransactions[index].customer == 0 ? 'Walk in Customer' : allTransactions[index].customer.username;
     let refNumber = allTransactions[index].ref_number != "" ? allTransactions[index].ref_number : allTransactions[index].order;
-    let orderNumber = allTransactions[index].order;
+    let orderNumber = allTransactions[index].flag == 'Error'? allTransactions[index].order:allTransactions[index].receiptNumber ;
     let type = "";
     let tax_row = "";
     let items = "";
@@ -3123,7 +3279,7 @@ $.fn.viewTransaction = function (index) {
     receipt = `<div style="font-size: 10px;">                            
     <p style="text-align: center;">
     ${settings.img == "" ?'<img style="max-width: 50px;max-width: 50px;" src ="assets/images/zrb_logo.png" /><br>' : '<img style="max-width: 50px;max-width: 50px;" src ="assets/images/zrb_logo.png" /><br>'}
-        <span style="font-size: 14px;">TAX PAYER: ${settings.store}</span> <br>
+        <span style="font-size: 10px;">TAX PAYER: ${settings.store}</span> <br>
         Z NUMBER:  ${settings.zNumber} <br>
         TIN:  ${settings.tinNumber}<br>
         VRN: ${settings.vrnNumber} <br>

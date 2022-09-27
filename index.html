@@ -594,8 +594,8 @@
 
 
 
-  <div id="newProduct" class="modal fade bs-example-modal-sm" tabindex="-1" role="dialog" aria-labelledby="mySmallModalLabel" aria-hidden="true" style="display: none;">
-        <div class="modal-dialog modal-sm">
+  <div id="newProduct" class="modal fade bs-example-modal-lg" tabindex="-1" role="dialog" aria-labelledby="mySmallModalLabel" aria-hidden="true" style="display: none;">
+        <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
                     <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
@@ -607,31 +607,59 @@
                     <form id="saveProduct" encType="multipart/form-data">
                         <input type="hidden" name="id" id="product_id">
                         <input type="hidden" name="img" id="img">
+                        <input type="hidden" name = "savetype" id = "savetype">
                         <input type="hidden" name="remove" id="remove_img">
-                        <div class="form-group">
-                            <label for="userName">Category</label>
-                            <select name="category" class="form-control" id="category"></select>
+                        <div class="row">
+                            <div class = "col-md-5">
+                                <div class="form-group">
+                                    <label for="userName">Bar Code</label>
+                                    <input type="text" name="barcode" placeholder="Enter barcode" class="form-control" id="barcode">
+                                </div>
+                                <div class="form-group">
+                                    <label for="userName">Category</label>
+                                    <select name="category" class="form-control" id="category"></select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="userName">Product Name</label>
+                                    <input type="text" required="required"  name="name" parsley-trigger="change" placeholder="Enter a product name" class="form-control" id="productName">
+                                </div>
+                                <div class="form-group">
+                                    <label for="userName">Price</label>
+                                    <input type="text" required="required" name="price" placeholder="Price" class="form-control" id="product_price">
+                                </div>
+                                <div class="form-group">
+                                    <label><input type="checkbox" name="no_tax_item" id="no_tax_item" style="max-width: 30px; float: left;">No Tax Item</label>
+                                </div>
+                                <div class="form-group">
+                                    <input type="text"  name="itemId"  placeholder="Non tax item id" class="form-control" id="itemId">
+                                </div>
+                            </div>
+                            <div class = "col-md-5">
+                                <div class="form-group">
+                                    <label for="userName">Stock</label>
+                                    <input type="text" name="quantity" placeholder="Available stock" class="form-control" id="quantity">
+                                </div>
+                                <div class="form-group">
+                                    <label for="userName">Brand</label>
+                                    <input type="text" name="brand" placeholder="brand" class="form-control" id="brand">
+                                </div>
+                                <div class="form-group">
+                                    <label for="userName">Expire Date</label>
+                                    <input type="date" name="expiredate" placeholder="dd/mm/yyyy" min="today"  class="form-control" id="expiredate">
+                                </div>
+                                <div class="form-group">
+                                    <label><input type="checkbox" name="stock" id="stock" style="max-width: 30px; float: left;">  Disable stock check </label>
+                                </div>
+                                <div class="form-group">
+                                    <label for="userName"><span id="rmv_img" class="btn btn-xs btn-warning">Remove</span> Picture </label>                      
+                                    <div id="current_img"></div>
+                                    <input type="file" name="imagename" id="imagename">                            
+                                </div>
+                                
+
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label for="userName">Product Name</label>
-                            <input type="text" required="required"  name="name" parsley-trigger="change" placeholder="Enter a product name" class="form-control" id="productName">
-                        </div>
-                        <div class="form-group">
-                            <label for="userName">Price</label>
-                            <input type="text" required="required" name="price" placeholder="Price" class="form-control" id="product_price">
-                        </div>
-                        <div class="form-group">
-                            <label for="userName">Stock</label>
-                            <input type="text" name="quantity" placeholder="Available stock" class="form-control" id="quantity">
-                        </div>
-                        <div class="form-group">
-                            <label><input type="checkbox" name="stock" id="stock" style="max-width: 30px; float: left;">  Disable stock check </label>
-                        </div>
-                        <div class="form-group">
-                            <label for="userName"><span id="rmv_img" class="btn btn-xs btn-warning">Remove</span> Picture </label>                      
-                            <div id="current_img"></div>
-                            <input type="file" name="imagename" id="imagename">                            
-                        </div>
+      
   
                         <input type="submit" id="submitProduct" class="btn btn-primary btn-block waves-effect waves-light">
                     </form>
@@ -676,6 +704,7 @@
                             <img  class="loading m-t-5" style="margin-left: 35%" height="50px" src="assets/images/loading.gif" alt="">
                         </h4>   
 
+                        <button class="btn btn-danger pull-right" id="deleteAllProducts">Delete All</button>
                         
                             <button class="btn btn-white pull-right" id="print_list">Download</button>
                        

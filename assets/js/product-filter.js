@@ -15,16 +15,16 @@ $(document).ready(function(){
     });
 
  
-    function searchProducts () {        
+   function searchProducts () {        
         $("#categories .btn-categories").removeClass("active");
         var matcher = new RegExp($("#search").val(), 'gi');
         $('.box').show().not(function(){
-            return matcher.test($(this).find('.name, .sku').text())
+            return  matcher.test($(this).find('.name, .sku').text())
         }).hide();
     }
 
-    let $search = $("#search").on('input',function(){
-        searchProducts();       
+    let $search = $("#search").on('input',  function(){
+         searchProducts();       
     });
 
 
