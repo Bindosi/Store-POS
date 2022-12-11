@@ -1,3 +1,4 @@
+
 $(document).ready(function(){
 
     $('#categories').on('click', '.btn-categories', function(){
@@ -14,25 +15,7 @@ $(document).ready(function(){
 
     });
 
- 
-   function searchProducts () {        
-        $("#categories .btn-categories").removeClass("active");
-        var matcher = new RegExp($("#search").val(), 'gi');
-        $('.box').show().not(function(){
-            return  matcher.test($(this).find('.name, .sku').text())
-        }).hide();
-    }
 
-    let $search = $("#search").on('input',  function(){
-         searchProducts();       
-    });
-
-
-    $('body').on('click', '#jq-keyboard button', function(e) {
-        if($("#search").is(":focus")) {
-            searchProducts(); 
-        }          
-    });
 
 
     function searchOpenOrders() {
@@ -45,6 +28,7 @@ $(document).ready(function(){
 
     var $searchHoldOrder = $("#holdOrderInput").on('input',function () {
         searchOpenOrders();
+
     });
 
 

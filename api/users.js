@@ -1,6 +1,7 @@
 const app = require( "express")();
 const server = require( "http" ).Server( app );
 const bodyParser = require( "body-parser" );
+//const Realm = require("realm");
 const Datastore = require( "nedb" );
 const btoa = require('btoa');
 app.use( bodyParser.json() );
@@ -87,6 +88,7 @@ app.post( "/login", function ( req, res ) {
 app.get( "/all", function ( req, res ) {
     usersDB.find( {}, function ( err, docs ) {
         res.send( docs );
+       // console.log('all users'+ JSON.stringify(docs))
     } );
 } );
 

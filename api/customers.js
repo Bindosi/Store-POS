@@ -2,6 +2,7 @@ const app = require( "express" )();
 const server = require( "http" ).Server( app );
 const bodyParser = require( "body-parser" );
 const Datastore = require( "nedb" );
+//const Realm = require("realm");
 const async = require( "async" );
 
 app.use( bodyParser.json() );

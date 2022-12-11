@@ -5,7 +5,10 @@ const setupEvents = require('./installers/setupEvents')
  
 const server = require('./server');
 const {app, BrowserWindow, ipcMain} = require('electron');
-const path = require('path')
+const path = require('path');
+const isDev = process.env.NODE_ENV === 'development'? true:false;
+const isMac = process.env.NODE_ENV === 'darwin'? true:false;
+//const app = new Realm.App({ id: "application-0-svmos" });
 
 const contextMenu = require('electron-context-menu');
 

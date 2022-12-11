@@ -1,9 +1,66 @@
 let app = require("express")();
 let server = require("http").Server(app);
 let bodyParser = require("body-parser");
+//const Realm = require("realm");
 let Datastore = require("nedb");
 let Inventory = require("./inventory");
 let Swal = require('sweetalert2');
+const BSON = require('bson');
+var Readable = require('stream').Readable;
+
+// const Realm = require("realm")
+// //onst InventorySchema = require("./datastore/Inventory")
+
+// const realmApp = new Realm.App({ id: "fahud-pos-0-lippj" });
+process.env["NODE_TLS_REJECT_UNAUTHORIZED"] = 0;
+
+const TransactSchema = {
+
+  name: 'Transaction',
+
+  properties: {
+    _partitionKey: 'string?',
+  receiptNumber: 'string',
+  order: 'string',
+  ref_number: 'string',
+  customer: 'string',
+  status: 'string',
+  subtotal: 'double',
+  tax: 'double',
+  order_type: 'int',
+  items: 'string',
+  date: 'date',
+  payment_type: 'string',
+  payment_info: 'string',
+  total: 'double',
+  paid: 'double',
+  change: 'double',
+  _id: 'objectId',
+  till: 'string',
+  mac: 'string',
+  user: 'string',
+  user_id: 'string',
+  flag:'string',
+  saved:'string'
+},
+primaryKey: '_id'
+}
+
+const cartSchema = {
+  name: 'Cart',
+  embedded: 'true',
+  properties: {
+    id: 'string',
+    itemId: 'string',
+    category: 'string',
+    discount: 'double',
+    itemName: 'string',
+    barcode: 'string',
+    price: 'double',
+    quantity: 'int'
+  },
+  primaryKey: 'id'
+}
 
 app.use(bodyParser.json());
 
@@ -23,8 +80,19 @@ app.get("/", function(req, res) {
 
  
 app.get("/all", function(req, res) {
+//   transactionsDB.update( {
+// }, {
+//   $set: {
+//     user_id:1,
+//     user:1
+  
+//   }
+// },{},
+// );
+
   transactionsDB.find({flag: 'Connected'}, function(err, docs) {
     res.send(docs);
+    console.log('trans '+JSON.stringify(docs))
   });
 });
 
@@ -112,9 +180,12 @@ app.post("/deleteTransactions", function(req, res){
   }); 
 });
 
+
+
 app.post("/new", function(req, res) {
   let newTransaction = req.body;
- 
+ console.log('New transaction received'+ newTransaction._id)
+ console.log('The new transaction received is'+ JSON.stringify(newTransaction))
   transactionsDB.insert(newTransaction, function(err, transaction) {    
     if (err) res.status(500).send(err);
     else {
@@ -145,16 +216,34 @@ app.post("/save", function(req, res) {
 
 app.put("/new", function(req, res) {
   let oderId = req.body._id;
-  transactionsDB.update( {
-      _id: oderId
-  }, req.body, {}, function (
+  let recalledTransaction = req.body
+  console.log('transaction received'+req.body._id)
+  console.log('this is the transaction received'+JSON.stringify(req.body))
+
+  transactionsDB.insert( recalledTransaction, function (
       err,
-      numReplaced,
-      order
+      transacation
+      
   ) {
-      if ( err ) res.status( 500 ).send( err );
-      else res.sendStatus( 200 );
+      if ( err ) {
+        console.log('transacation edit failed '+err)
+        res.status( 500 ).send( err );
+      }
+      else {
+        console.log('transaction edit success')
+        res.sendStatus( 200 );
+      }
   } );
+
+  transactionsDB.find({ _id: oderId }, function(err, doc) {
+    if (doc){
+      console.log('this is the newly saved transaction '+doc[0]);
+      
+    } 
+    if(err){
+      console.log(err)
+    }
+  });
 });
 
 
